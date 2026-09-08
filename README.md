@@ -1,4 +1,4 @@
-# 📚 DocuGraph RAG — Nền Tảng Trích Xuất & Hỏi Đáp Tài Liệu Thông Minh
+# 📚 skibidi — Nền Tảng Trích Xuất & Hỏi Đáp Tài Liệu Thông Minh
 
 > **Skibidi** là hệ thống hỏi đáp tài liệu thông minh kết hợp **GraphRAG** (Retrieval-Augmented Generation trên đồ thị tri thức), **OCR đa mô hình**, và **Google Gemini AI** — được xây dựng theo kiến trúc full-stack hiện đại.
 
