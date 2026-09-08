@@ -24,9 +24,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="DocuGraph RAG API",
-    description="Nền tảng trích xuất & hỏi đáp tài liệu thông minh với GraphRAG",
-    version="0.1.0",
+    title="Skibidi API",
+    description="Nền tảng tóm tắt & hỏi đáp tài liệu thông minh với GraphRAG + PP-OCRv6",
+    version="0.2.0",
     lifespan=lifespan,
 )
 

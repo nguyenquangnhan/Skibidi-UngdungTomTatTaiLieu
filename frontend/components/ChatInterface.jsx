@@ -219,7 +219,7 @@ export default function ChatInterface({ notebookId }) {
           </button>
         </div>
         <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
-          DocuGraph RAG · Powered by Gemini 2.5 Flash
+          Skibidi · Powered by Gemini 2.5 Flash + GraphRAG
         </p>
       </div>
     </div>

@@ -1,6 +1,8 @@
 # 📚 Skibidi — Nền Tảng Trích Xuất & Hỏi Đáp Tài Liệu Thông Minh
 
-> **Skibidi** là hệ thống hỏi đáp tài liệu thông minh kết hợp **GraphRAG** (Retrieval-Augmented Generation trên đồ thị tri thức), **OCR đa mô hình**, và **Google Gemini AI** — được xây dựng theo kiến trúc full-stack hiện đại.
+> **Skibidi** là hệ thống hỏi đáp và tóm tắt tài liệu thông minh kết hợp **GraphRAG** (Retrieval-Augmented Generation trên đồ thị tri thức), **OCR đa mô hình PP-OCRv6**, và **Google Gemini AI** — được xây dựng theo kiến trúc full-stack hiện đại.
+>
+> 🎯 **Lợi thế cạnh tranh:** Không chỉ vector search thông thường — Skibidi xây dựng **Knowledge Graph** từ tài liệu, cho phép AI hiểu được **mối quan hệ giữa các thực thể** để tóm tắt và trả lời chính xác, toàn diện hơn.
 
 ---
 
@@ -14,8 +16,36 @@
 | **Embedding** | Google Gemini Embedding (`gemini-embedding-001`, dim=768) |
 | **Vector DB / Graph DB** | Neo4j 5.12 (vector index + Knowledge Graph) |
 | **Relational DB** | PostgreSQL 16 (async via SQLAlchemy + asyncpg) |
-| **OCR** | PaddleOCR v2.8 (PP-OCRv4/v5 mobile, hỗ trợ tiếng Việt) |
+| **OCR** | PaddleOCR **PP-OCRv6** (2026) — 50+ ngôn ngữ, 5.2× nhanh hơn |
 | **Container** | Docker + Docker Compose |
+
+---
+
+## 🆚 So Sánh Với Các Giải Pháp Tương Tự
+
+Dự án được tham khảo từ hai nguồn mở nổi tiếng và nâng cấp vượt trội:
+
+| Tính năng | [Nextjs-RAG-Notebook](https://github.com/shivam-911/Nextjs-RAG-Notebook) | [Skibidi](.) |
+|---|---|---|
+| **LLM** | OpenAI GPT-3.5/4 | ✅ Google Gemini 2.5 Flash |
+| **Vector DB** | Qdrant Cloud | ✅ Neo4j (local, không cần cloud) |
+| **Knowledge Graph** | ❌ Không có | ✅ **GraphRAG đầy đủ** |
+| **OCR** | ❌ Không có (chỉ PDF có text) | ✅ **PP-OCRv6** — 50+ ngôn ngữ |
+| **Auth** | ❌ Không có | ✅ JWT + Google OAuth2 |
+| **Streaming Chat** | ✅ | ✅ SSE Streaming |
+| **Triển khai** | Vercel (cloud) | ✅ Self-hosted (Docker) |
+
+**Pipeline so sánh:**
+```
+Nextjs-RAG-Notebook:
+  Upload → Chunk → Embed → Vector Search → Chat
+
+Skibidi (dự án này):
+  Upload → OCR(PP-OCRv6) → Chunk → Embed
+         → Vector Search ──┐
+         → KG Extraction  ─┤→ GraphRAG → Gemini 2.5 Flash → Streaming Chat
+         → Graph Traverse ─┘
+```
 
 ---
 
@@ -87,19 +117,28 @@
 | **asyncpg** | >= 0.30 | Async PostgreSQL driver |
 | **neo4j** | >= 5.12.0 | Neo4j Python driver (Bolt protocol) |
 
-#### Xử Lý Tài Liệu
+#### Xử Lý Tài Liệu — PP-OCRv6 (2026)
 | Thư viện | Phiên bản | Vai trò |
 |---|---|---|
 | **PyMuPDF (fitz)** | >= 1.24 | Đọc & render PDF sang ảnh |
-| **PaddleOCR** | >= 2.8 | OCR đa ngôn ngữ (PP-OCRv4/v5 mobile) |
+| **PaddleOCR** | >= 2.9 | **PP-OCRv6** — OCR đa ngôn ngữ (50+ ngôn ngữ, 1 model) |
 | **PaddlePaddle** | >= 2.6 | Deep learning framework của PaddleOCR |
 | **Pillow** | >= 10.0 | Xử lý ảnh (Image open/resize) |
 
-**Pipeline OCR:**
+**Pipeline OCR (PP-OCRv6 2026):**
 1. **PDF có text:** Dùng PyMuPDF `page.get_text()` trực tiếp (nhanh, không cần OCR)
-2. **PDF scan (ảnh):** Render từng trang → 75 DPI PNG → PaddleOCR song song (`ProcessPoolExecutor`, tối đa 3 workers)
-3. **Image file:** PaddleOCR trực tiếp
+2. **PDF scan (ảnh):** Render từng trang → 75 DPI PNG → **PP-OCRv6** song song (`ProcessPoolExecutor`, tối đa 3 workers)
+3. **Image file:** PP-OCRv6 trực tiếp — hỗ trợ tiếng Việt (Latin-script unified model)
 4. **Gemini Vision:** Fallback OCR cho ảnh phức tạp (async)
+
+**PP-OCRv6 Highlights (so với PP-OCRv5 cũ):**
+- ✅ **+4.6% detection accuracy**, **+5.1% recognition accuracy**
+- ✅ **5.2× CPU inference speedup** (OpenVINO backend)
+- ✅ **50 ngôn ngữ** với 1 model duy nhất (không cần switch model)
+- ✅ Vượt qua Qwen3-VL-235B, GPT-5.5 với chỉ 34.5M parameters
+- 📦 3 tiers: `tiny` (1.5M) / `small` (7.7M) / `medium` (34.5M)
+
+> 📚 Nguồn: [PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) — 70k+ stars, được dùng bởi Dify, RAGFlow, Cherry Studio
 
 #### Web Scraping
 | Thư viện | Phiên bản | Vai trò |
@@ -436,11 +475,20 @@ uv run python generate_evaluation_excel.py
 
 ---
 
+## 📚 Tài Liệu Tham Khảo
+
+| Nguồn | Mô tả | Đóng góp cho dự án |
+|---|---|---|
+| [shivam-911/Nextjs-RAG-Notebook](https://github.com/shivam-911/Nextjs-RAG-Notebook) | NotebookLM clone với Next.js + OpenAI + Qdrant | UI/UX pattern dạng NotebookLM, cấu trúc tương tác nguồn tài liệu & Chat Streaming SSE |
+| [PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | OCR toolkit hàng đầu thế giới (70k+ stars) | Động cơ PP-OCRv6 đa ngôn ngữ, tối ưu hóa tốc độ CPU 5.2× |
+
+---
+
 ## 🛠️ Tóm Tắt Công Nghệ
 
 ```
 Backend:   Python 3.12 · FastAPI · SQLAlchemy · asyncpg · LangChain
-           Gemini 2.5 Flash · Gemini Embedding 001 · PaddleOCR PP-OCRv4
+           Gemini 2.5 Flash · Gemini Embedding 001 · PaddleOCR PP-OCRv6 (2026)
            Neo4j 5.12 · PostgreSQL 16 · PyJWT · bcrypt · httpx · PyMuPDF
 
 Frontend:  Next.js 15 · React 19 · TailwindCSS 3 · react-force-graph-2d
@@ -451,4 +499,5 @@ Infra:     Docker Compose · Neo4j APOC · RAGAS evaluation
 
 ---
 
-*Được phát triển như đề tài thực tập — DocuGraph RAG v0.1.0*
+*Được phát triển như đề tài chuyên đề — Skibidi: Ứng Dụng Tóm Tắt & Hỏi Đáp Tài Liệu v0.2.0*  
+*Tham khảo: [Nextjs-RAG-Notebook](https://github.com/shivam-911/Nextjs-RAG-Notebook) · [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)*

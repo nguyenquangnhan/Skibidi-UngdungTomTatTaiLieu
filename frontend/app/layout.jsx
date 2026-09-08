@@ -8,9 +8,9 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'DocuGraph RAG — Hỏi Đáp Tài Liệu Thông Minh',
-  description: 'Nền tảng trích xuất và hỏi đáp tài liệu thông minh kết hợp GraphRAG, OCR và Google Gemini AI',
-  keywords: ['RAG', 'AI', 'document', 'tài liệu', 'Gemini', 'knowledge graph'],
+  title: 'Skibidi — Ứng Dụng Tóm Tắt & Hỏi Đáp Tài Liệu Thông Minh',
+  description: 'Nền tảng tóm tắt và hỏi đáp tài liệu thông minh kết hợp GraphRAG, PP-OCRv6 và Google Gemini AI',
+  keywords: ['Skibidi', 'RAG', 'AI', 'document', 'tóm tắt tài liệu', 'Gemini', 'knowledge graph'],
 }
 
 export default function RootLayout({ children }) {

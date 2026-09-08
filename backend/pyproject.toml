@@ -1,7 +1,7 @@
 [project]
-name = "docugraph-rag"
+name = "skibidi-rag"
 version = "0.2.0"
-description = "DocuGraph RAG — Nền tảng trích xuất & hỏi đáp tài liệu thông minh với GraphRAG + PP-OCRv6"
+description = "Skibidi — Ứng dụng tóm tắt & hỏi đáp tài liệu thông minh với GraphRAG + PP-OCRv6"
 readme = "README.md"
 requires-python = ">=3.12"
 

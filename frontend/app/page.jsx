@@ -98,7 +98,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
-        <LoadingSpinner size="lg" text="DocuGraph RAG" />
+        <LoadingSpinner size="lg" text="Skibidi" />
       </div>
     )
   }
@@ -115,7 +115,7 @@ export default function HomePage() {
             Powered by Gemini 2.5 Flash + GraphRAG
           </div>
           <h1 className="text-5xl font-bold mb-4 leading-tight text-gradient">
-            DocuGraph RAG
+            Skibidi
           </h1>
           <p className="text-lg mb-8" style={{ color: 'var(--text-muted)' }}>
             Hỏi đáp tài liệu thông minh với AI · GraphRAG · Knowledge Graph · OCR đa ngôn ngữ
@@ -169,7 +169,7 @@ export default function HomePage() {
             <BookOpen size={16} style={{ color: 'var(--primary)' }} />
           </div>
           <span className="font-semibold text-sm truncate" style={{ color: 'var(--text-bright)' }}>
-            DocuGraph RAG
+            Skibidi
           </span>
         </div>
 
