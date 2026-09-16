@@ -3,7 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Skibidi"
     embedding_dim: int = 768
@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # PaddleOCR
     paddle_ocr_lang: str = "vi"
     paddle_use_gpu: bool = False
+    paddle_ocr_det_version: str = "PP-OCRv3"
 
     # Auth (JWT)
     jwt_secret_key: str = "change-me-to-a-strong-random-secret-key"

@@ -36,15 +36,26 @@ async def close_neo4j_driver():
 async def init_vector_index():
     """Create vector index if not exists."""
     driver = get_neo4j_driver()
-    async with driver.session() as session:
-        await session.run("""
-            CREATE VECTOR INDEX chunk_vector_index IF NOT EXISTS
-            FOR (c:Chunk) ON (c.embedding)
-            OPTIONS {indexConfig: {
-                `vector.dimensions`: 768,
-                `vector.similarity_function`: 'cosine'
-            }}
-        """)
+    try:
+        async with driver.session() as session:
+            result = await session.run("SHOW INDEXES YIELD name WHERE name = 'chunk_vector_index'")
+            record = await result.single()
+            if not record:
+                try:
+                    await session.run("""
+                        CALL db.index.vector.createNodeIndex('chunk_vector_index', 'Chunk', 'embedding', 768, 'cosine')
+                    """)
+                except Exception:
+                    await session.run("""
+                        CREATE VECTOR INDEX chunk_vector_index IF NOT EXISTS
+                        FOR (c:Chunk) ON (c.embedding)
+                        OPTIONS {indexConfig: {
+                            `vector.dimensions`: 768,
+                            `vector.similarity_function`: 'cosine'
+                        }}
+                    """)
+    except Exception as e:
+        print(f"Vector index initialization check: {e}")
 
 
 async def store_chunks(source_id: str, notebook_id: str, chunks: list[dict]):
@@ -139,16 +150,37 @@ Chỉ trả về JSON, không có text khác."""
 
     driver = get_neo4j_driver()
     async with driver.session() as session:
-        # Create entity nodes
+        # Create entity nodes and link to chunks
         for entity in kg_data.get("entities", []):
-            label = entity.get("type", "Entity").replace("/", "_")
+            label = entity.get("type", "Entity").replace("/", "_").replace(" ", "_")
+            name = entity.get("name", "").strip()
+            if not name:
+                continue
             await session.run(
                 f"MERGE (e:{label} {{name: $name}}) SET e.type = $type",
-                name=entity["name"], type=entity.get("type", "Entity"),
+                name=name, type=entity.get("type", "Entity"),
             )
+            # Link entity to chunks of this source where it is mentioned
+            await session.run("""
+                MATCH (c:Chunk)-[:PART_OF]->(s:Source {id: $source_id})
+                WHERE toLower(c.text) CONTAINS toLower($name)
+                WITH c
+                MATCH (e {name: $name})
+                MERGE (e)-[:MENTIONED_IN]->(c)
+            """, source_id=source_id, name=name)
+
+            # Fallback: if not matched textually in chunks, link to at least one chunk of this source
+            await session.run("""
+                MATCH (c:Chunk)-[:PART_OF]->(s:Source {id: $source_id})
+                WITH c LIMIT 1
+                MATCH (e {name: $name})
+                WHERE NOT (e)-[:MENTIONED_IN]->(:Chunk)-[:PART_OF]->(:Source {id: $source_id})
+                MERGE (e)-[:MENTIONED_IN]->(c)
+            """, source_id=source_id, name=name)
+
         # Create relationships
         for rel in kg_data.get("relationships", []):
-            rel_type = rel.get("relation", "RELATED_TO").upper().replace(" ", "_")
+            rel_type = rel.get("relation", "RELATED_TO").upper().replace(" ", "_").replace("-", "_")
             await session.run(f"""
                 MATCH (a {{name: $source}}), (b {{name: $target}})
                 MERGE (a)-[:{rel_type}]->(b)

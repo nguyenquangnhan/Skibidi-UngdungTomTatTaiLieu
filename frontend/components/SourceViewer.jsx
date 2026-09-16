@@ -1,91 +1,111 @@
 'use client'
-import { X, ExternalLink, FileText, Globe, Image } from 'lucide-react'
+import { X, ExternalLink, FileText, Globe, Image as ImageIcon } from 'lucide-react'
 
 export default function SourceViewer({ source, onClose }) {
   if (!source) return null
 
   const typeConfig = {
-    pdf: { icon: FileText, label: 'PDF', color: '#ff8787' },
-    image: { icon: Image, label: 'Ảnh', color: '#69db7c' },
-    url: { icon: Globe, label: 'URL', color: '#74c0fc' },
+    pdf: { icon: FileText, label: 'Tệp PDF', color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)' },
+    image: { icon: ImageIcon, label: 'Hình ảnh (OCR)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.15)' },
+    url: { icon: Globe, label: 'Trang Web', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
   }
   const config = typeConfig[source.source_type] || typeConfig.url
   const Icon = config.icon
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative card w-full max-w-2xl max-h-[80vh] flex flex-col animate-slide-up shadow-2xl">
+      <div className="absolute inset-0 bg-[#090a0f]/80 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[85vh] rounded-2xl bg-[#12151e] border border-white/[0.1] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] flex flex-col overflow-hidden z-10">
         {/* Header */}
-        <div className="flex items-center gap-3 p-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: `${config.color}20`, border: `1px solid ${config.color}40` }}>
-            <Icon size={16} style={{ color: config.color }} />
+        <div className="flex items-center gap-3 p-4 border-b border-white/[0.08] bg-white/[0.02]">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: config.bg, border: `1px solid ${config.color}30` }}
+          >
+            <Icon size={18} style={{ color: config.color }} />
           </div>
+
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-sm truncate" style={{ color: 'var(--text-bright)' }}>
+            <h3 className="font-bold text-sm text-white truncate">
               {source.title}
-            </h2>
+            </h3>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{config.label}</span>
+              <span className="text-xs text-slate-400 font-medium">{config.label}</span>
               {source.chunk_count > 0 && (
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· {source.chunk_count} chunks</span>
+                <span className="text-xs text-slate-400">· {source.chunk_count} đoạn văn bản</span>
               )}
             </div>
           </div>
+
           {source.url && (
-            <a href={source.url} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2">
-              <ExternalLink size={14} />
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Mở liên kết gốc"
+            >
+              <ExternalLink size={15} />
             </a>
           )}
-          <button onClick={onClose} className="btn-ghost p-2">
-            <X size={14} />
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+          >
+            <X size={15} />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto p-4">
+        {/* Content Body */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
           {source.source_type === 'pdf' && source.file_path ? (
-            <div className="text-center py-8">
-              <FileText size={40} className="mx-auto mb-3" style={{ color: 'var(--primary)' }} />
-              <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
-                File PDF: <strong style={{ color: 'var(--text-bright)' }}>{source.title}</strong>
+            <div className="text-center py-10">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-indigo-500/10 border border-indigo-500/25 text-indigo-400">
+                <FileText size={32} />
+              </div>
+              <h4 className="text-sm font-bold text-white mb-2">{source.title}</h4>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto mb-6">
+                Tài liệu đã được trích xuất và chia nhỏ để phục vụ GraphRAG và trích xuất Knowledge Graph.
               </p>
               <a
-                href={`${process.env.NEXT_PUBLIC_API_URL}/api/notebooks/${source.notebook_id}/sources/${source.id}/file`}
+                href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/notebooks/${source.notebook_id}/sources/${source.id}/file`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary inline-flex"
+                className="btn-primary inline-flex text-xs px-5 py-2.5"
               >
                 <ExternalLink size={14} />
-                Mở PDF
+                <span>Xem tệp PDF gốc</span>
               </a>
             </div>
           ) : source.source_type === 'url' ? (
-            <div className="text-center py-8">
-              <Globe size={40} className="mx-auto mb-3" style={{ color: '#74c0fc' }} />
-              <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>URL nguồn:</p>
+            <div className="text-center py-10">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-sky-500/10 border border-sky-500/25 text-sky-400">
+                <Globe size={32} />
+              </div>
+              <h4 className="text-sm font-bold text-white mb-2">Liên kết Nguồn Web</h4>
+              <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
+                Nội dung đã được trích xuất bằng bộ parser tự động, loại bỏ quảng cáo và menu điều hướng.
+              </p>
               <a
                 href={source.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm break-all hover:underline"
-                style={{ color: 'var(--primary)' }}
+                className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 break-all px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08]"
               >
-                {source.url}
+                <span>{source.url}</span>
+                <ExternalLink size={12} />
               </a>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                Không có preview cho loại tài liệu này.
-              </p>
+            <div className="text-center py-10">
+              <p className="text-xs text-slate-400">Không có bản xem trước trực tiếp cho định dạng này.</p>
             </div>
           )}
 
           {source.error_message && (
-            <div className="mt-4 p-3 rounded-lg status-failed text-xs">
-              <strong>Lỗi xử lý:</strong> {source.error_message}
+            <div className="mt-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 text-xs text-red-400">
+              <strong className="block mb-1">Chi tiết lỗi xử lý:</strong>
+              {source.error_message}
             </div>
           )}
         </div>

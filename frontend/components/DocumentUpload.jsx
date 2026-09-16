@@ -1,20 +1,7 @@
 'use client'
 import { useState, useCallback } from 'react'
-import { Upload, Link, X, FileText, Image, Globe, CheckCircle, AlertCircle, Clock, Loader2 } from 'lucide-react'
+import { Upload, Link, FileText, Globe, Loader2, ArrowUpCircle } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-
-const STATUS_CONFIG = {
-  completed: { icon: CheckCircle, label: 'Hoàn thành', cls: 'status-completed' },
-  processing: { icon: Loader2, label: 'Đang xử lý', cls: 'status-processing' },
-  failed: { icon: AlertCircle, label: 'Lỗi', cls: 'status-failed' },
-  pending: { icon: Clock, label: 'Chờ xử lý', cls: 'status-pending' },
-}
-
-const TYPE_ICONS = {
-  pdf: FileText,
-  image: Image,
-  url: Globe,
-}
 
 export default function DocumentUpload({ notebookId, onSourceAdded }) {
   const [tab, setTab] = useState('file') // 'file' | 'url'
@@ -25,6 +12,7 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
   const { authFetch } = useAuth()
 
   const uploadFile = useCallback(async (file) => {
+    if (!file) return
     setUploading(true)
     setError('')
     const formData = new FormData()
@@ -32,11 +20,11 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
     try {
       const res = await authFetch(`/api/notebooks/${notebookId}/sources/upload`, {
         method: 'POST',
-        headers: {},  // Let browser set multipart boundary
+        headers: {},
         body: formData,
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Upload thất bại')
+      if (!res.ok) throw new Error(data.detail || 'Upload tài liệu thất bại')
       onSourceAdded?.(data)
     } catch (err) {
       setError(err.message)
@@ -59,7 +47,7 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
 
   const handleUrl = useCallback(async (e) => {
     e.preventDefault()
-    if (!url.trim()) return
+    if (!url.trim() || uploading) return
     setUploading(true)
     setError('')
     try {
@@ -68,7 +56,7 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
         body: JSON.stringify({ url: url.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Lỗi khi thêm URL')
+      if (!res.ok) throw new Error(data.detail || 'Không thể cào nội dung từ URL này')
       onSourceAdded?.(data)
       setUrl('')
     } catch (err) {
@@ -76,27 +64,27 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
     } finally {
       setUploading(false)
     }
-  }, [authFetch, notebookId, onSourceAdded, url])
+  }, [authFetch, notebookId, onSourceAdded, url, uploading])
 
   return (
-    <div className="space-y-4">
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--surface-3)' }}>
+    <div className="space-y-3">
+      {/* Upload Type Switcher */}
+      <div className="flex p-1 rounded-xl bg-[#181c28] border border-white/[0.08]">
         {[
-          { key: 'file', label: 'Upload File', icon: Upload },
-          { key: 'url', label: 'Từ URL', icon: Link },
+          { key: 'file', label: 'Tải tệp tin (PDF / Ảnh)', icon: Upload },
+          { key: 'url', label: 'Liên kết Web', icon: Link },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
-            id={`upload-tab-${key}`}
             onClick={() => setTab(key)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-              tab === key ? 'text-white shadow' : ''
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              tab === key
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white'
             }`}
-            style={tab === key ? { background: 'var(--primary)' } : { color: 'var(--text-muted)' }}
           >
-            <Icon size={14} />
-            {label}
+            <Icon size={13} />
+            <span>{label}</span>
           </button>
         ))}
       </div>
@@ -104,13 +92,11 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
       {tab === 'file' ? (
         <label
           id="upload-dropzone"
-          className={`block border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200 ${
-            dragging ? 'scale-105' : ''
+          className={`relative block border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 group ${
+            dragging
+              ? 'border-indigo-500 bg-indigo-500/10 scale-[0.99]'
+              : 'border-white/[0.12] bg-[#12151e] hover:border-indigo-500/40 hover:bg-[#161924]'
           }`}
-          style={{
-            borderColor: dragging ? 'var(--primary)' : 'var(--border)',
-            background: dragging ? 'var(--primary-glow)' : 'var(--surface-3)',
-          }}
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
@@ -118,61 +104,55 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
           <input
             type="file"
             className="hidden"
-            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tiff"
-            onChange={handleFileInput}
+            accept=".pdf,.png,.jpg,.jpeg,.webp"
             disabled={uploading}
+            onChange={handleFileInput}
           />
-          {uploading ? (
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 size={28} className="animate-spin" style={{ color: 'var(--primary)' }} />
-              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Đang tải lên...</p>
+
+          <div className="flex flex-col items-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 group-hover:scale-110 transition-transform">
+              {uploading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <ArrowUpCircle size={20} />
+              )}
             </div>
-          ) : (
-            <>
-              <Upload size={28} className="mx-auto mb-3" style={{ color: 'var(--primary)' }} />
-              <p className="font-medium mb-1" style={{ color: 'var(--text-bright)' }}>
-                Kéo thả file vào đây
-              </p>
-              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Hỗ trợ: PDF, PNG, JPG, WEBP, GIF (tối đa 50MB)
-              </p>
-            </>
-          )}
+
+            <p className="text-xs font-semibold text-white mb-1">
+              {uploading ? 'Đang nạp và trích xuất tài liệu...' : 'Kéo thả file hoặc nhấp để chọn'}
+            </p>
+            <p className="text-[11px] text-slate-400">
+              PDF văn bản, PDF scan (PP-OCRv6), PNG, JPG, WEBP (&lt; 50MB)
+            </p>
+          </div>
         </label>
       ) : (
-        <form onSubmit={handleUrl} className="space-y-3">
-          <div className="relative">
-            <Globe size={15} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+        <form onSubmit={handleUrl} className="flex gap-2">
+          <div className="relative flex-1">
+            <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
-              id="upload-url-input"
               type="url"
-              placeholder="https://example.com/article"
-              className="input-field pl-9"
               value={url}
               onChange={e => setUrl(e.target.value)}
+              placeholder="https://example.com/bai-viet..."
+              className="input-field pl-9 py-2 text-xs"
               required
               disabled={uploading}
             />
           </div>
           <button
-            id="upload-url-submit"
             type="submit"
-            disabled={uploading || !url.trim()}
-            className="btn-primary w-full justify-center"
+            disabled={!url.trim() || uploading}
+            className="btn-primary text-xs px-3 py-2 flex-shrink-0"
           >
-            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Link size={14} />}
-            {uploading ? 'Đang xử lý...' : 'Thêm URL'}
+            {uploading ? <Loader2 size={13} className="animate-spin" /> : 'Nạp'}
           </button>
         </form>
       )}
 
       {error && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg status-failed text-xs">
-          <AlertCircle size={13} />
+        <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-xs text-red-400">
           {error}
-          <button onClick={() => setError('')} className="ml-auto">
-            <X size={13} />
-          </button>
         </div>
       )}
     </div>

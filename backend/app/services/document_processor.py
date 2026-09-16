@@ -16,7 +16,12 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import aiofiles
-import fitz  # PyMuPDF
+try:
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
+
+import pypdf
 import httpx
 from PIL import Image
 from bs4 import BeautifulSoup
@@ -86,18 +91,29 @@ async def extract_text_from_pdf(file_path: str) -> str:
     """Extract text from PDF. Uses text layer if available, else OCR."""
     loop = asyncio.get_event_loop()
     pdf_bytes = Path(file_path).read_bytes()
-    doc = fitz.open(file_path)
 
-    pages_text = []
-    needs_ocr_pages = []
+    if fitz is not None:
+        doc = fitz.open(file_path)
+        pages_text = []
+        needs_ocr_pages = []
 
-    for i, page in enumerate(doc):
-        text = page.get_text().strip()
-        if text:
-            pages_text.append((i, text))
-        else:
-            needs_ocr_pages.append(i)
-    doc.close()
+        for i, page in enumerate(doc):
+            text = page.get_text().strip()
+            if text:
+                pages_text.append((i, text))
+            else:
+                needs_ocr_pages.append(i)
+        doc.close()
+    else:
+        reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+        pages_text = []
+        needs_ocr_pages = []
+        for i, page in enumerate(reader.pages):
+            text = (page.extract_text() or "").strip()
+            if text:
+                pages_text.append((i, text))
+            else:
+                needs_ocr_pages.append(i)
 
     if needs_ocr_pages:
         # Run OCR in parallel (max 3 workers)
@@ -159,3 +175,14 @@ async def process_document(file_path: str, source_type: str) -> str:
         return await extract_text_from_image(file_path)
     else:
         raise ValueError(f"Unsupported source type for file: {source_type}")
+
+
+def split_text_into_chunks(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> list[str]:
+    """Split text into overlapping chunks using RecursiveCharacterTextSplitter."""
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ".", " ", ""],
+    )
+    return splitter.split_text(text)
