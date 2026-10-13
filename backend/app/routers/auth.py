@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 
@@ -12,9 +12,10 @@ settings = get_settings()
 
 
 async def get_current_user(
-    token: str = Depends(lambda req: req.headers.get("Authorization", "").replace("Bearer ", "")),
+    authorization: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    token = authorization.removeprefix("Bearer ").strip() if authorization else ""
     if not token:
         raise HTTPException(status_code=401, detail="Token không hợp lệ")
     try:

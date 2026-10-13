@@ -17,6 +17,17 @@ from app.routers.auth import get_current_user
 router = APIRouter(prefix="/api/notebooks/{notebook_id}/sources", tags=["Sources"])
 settings = get_settings()
 
+UPLOAD_ROOT = Path(settings.upload_dir).resolve()
+
+
+def _is_within_directory(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+        return True
+    except ValueError:
+        return False
+
+
 ALLOWED_EXTENSIONS = {
     "pdf": SourceType.pdf,
     "png": SourceType.image,
@@ -62,13 +73,18 @@ async def upload_file(
         raise HTTPException(status_code=413, detail=f"File quá lớn (tối đa {settings.max_upload_size_mb}MB)")
 
     # Save file
-    upload_dir = Path(settings.upload_dir) / notebook_id
+    upload_dir = (UPLOAD_ROOT / notebook_id).resolve()
     upload_dir.mkdir(parents=True, exist_ok=True)
+    if not _is_within_directory(upload_dir, UPLOAD_ROOT):
+        raise HTTPException(status_code=400, detail="Notebook directory không hợp lệ")
 
     import uuid
     file_id = str(uuid.uuid4())
     file_path = str(upload_dir / f"{file_id}.{ext}")
-    with open(file_path, "wb") as f:
+    resolved_file_path = Path(file_path).resolve()
+    if not _is_within_directory(resolved_file_path, UPLOAD_ROOT):
+        raise HTTPException(status_code=400, detail="File path không hợp lệ")
+    with open(resolved_file_path, "wb") as f:
         f.write(content)
 
     source_type = ALLOWED_EXTENSIONS[ext]
@@ -126,6 +142,10 @@ async def get_file(
     source = await notebook_service.get_source(db, source_id, notebook_id)
     if not source or not source.file_path:
         raise HTTPException(status_code=404, detail="File không tồn tại")
-    if not Path(source.file_path).exists():
+
+    file_path = Path(source.file_path).resolve()
+    if not _is_within_directory(file_path, UPLOAD_ROOT):
+        raise HTTPException(status_code=403, detail="File không được phép truy cập")
+    if not file_path.exists():
         raise HTTPException(status_code=404, detail="File không tìm thấy trên server")
-    return FileResponse(source.file_path, filename=source.title)
+    return FileResponse(file_path, filename=source.title)

@@ -21,7 +21,7 @@ def get_embedder() -> GoogleGenerativeAIEmbeddings:
     if _embedder is None:
         _embedder = GoogleGenerativeAIEmbeddings(
             model=settings.embedding_model,
-            google_api_key=settings.gemini_api_key,
+            google_api_key=settings.gemini_api_key_list[0] if settings.gemini_api_key_list else "",
         )
     return _embedder
 
@@ -41,8 +41,19 @@ async def embed_and_store(source_id: str, notebook_id: str, text: str) -> int:
     if not chunks:
         return 0
 
-    embedder = get_embedder()
-    embeddings = embedder.embed_documents(chunks)
+    embeddings = None
+    last_error = None
+    for key in settings.gemini_api_key_list:
+        try:
+            embeddings = GoogleGenerativeAIEmbeddings(
+                model=settings.embedding_model,
+                google_api_key=key,
+            ).embed_documents(chunks)
+            break
+        except Exception as error:
+            last_error = error
+    if embeddings is None:
+        raise RuntimeError("Tất cả Gemini API key đều không thể tạo embedding") from last_error
 
     chunk_records = []
     for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
@@ -60,5 +71,13 @@ async def embed_and_store(source_id: str, notebook_id: str, text: str) -> int:
 
 async def embed_query(query: str) -> list[float]:
     """Embed a single query string."""
-    embedder = get_embedder()
-    return embedder.embed_query(query)
+    last_error = None
+    for key in settings.gemini_api_key_list:
+        try:
+            return GoogleGenerativeAIEmbeddings(
+                model=settings.embedding_model,
+                google_api_key=key,
+            ).embed_query(query)
+        except Exception as error:
+            last_error = error
+    raise RuntimeError("Tất cả Gemini API key đều không thể tạo query embedding") from last_error

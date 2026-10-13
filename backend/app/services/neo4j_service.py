@@ -10,6 +10,7 @@ from google import genai
 from google.genai import types
 
 from app.config import get_settings
+from app.services.gemini_client import get_gemini_clients
 
 settings = get_settings()
 
@@ -121,8 +122,6 @@ async def get_related_entities(chunk_ids: list[str]) -> list[dict]:
 
 async def extract_and_store_knowledge_graph(source_id: str, text: str):
     """Use Gemini to extract entities/relations and store in Neo4j."""
-    client = genai.Client(api_key=settings.gemini_api_key)
-
     prompt = f"""Từ đoạn văn bản sau, hãy trích xuất các thực thể (entities) và quan hệ (relationships).
 Trả về JSON với format:
 {{
@@ -135,13 +134,22 @@ Văn bản:
 
 Chỉ trả về JSON, không có text khác."""
 
-    response = client.models.generate_content(
-        model=settings.chat_model,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-        ),
-    )
+    response = None
+    last_error = None
+    for client in get_gemini_clients():
+        try:
+            response = client.models.generate_content(
+                model=settings.chat_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                ),
+            )
+            break
+        except Exception as error:
+            last_error = error
+    if response is None:
+        raise RuntimeError("Tất cả Gemini API key đều không thể trích xuất knowledge graph") from last_error
 
     try:
         kg_data = json.loads(response.text)

@@ -10,6 +10,7 @@ from google.genai import types
 
 from app.config import get_settings
 from app.services import embedding_service, neo4j_service
+from app.services.gemini_client import get_gemini_clients
 
 settings = get_settings()
 
@@ -85,22 +86,30 @@ Câu hỏi: {question}"""
     contents.append(types.Content(role="user", parts=[types.Part(text=user_message)]))
 
     # 6. Stream Gemini response
-    client = genai.Client(api_key=settings.gemini_api_key)
-
     # Yield source IDs first as metadata
     yield f"data: {json.dumps({'type': 'sources', 'source_ids': source_ids})}\n\n"
 
     full_response = ""
-    async for chunk in await client.aio.models.generate_content_stream(
-        model=settings.chat_model,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=0.3,
-        ),
-    ):
-        if chunk.text:
-            full_response += chunk.text
-            yield f"data: {json.dumps({'type': 'token', 'content': chunk.text})}\n\n"
+    last_error = None
+    for client in get_gemini_clients():
+        try:
+            async for chunk in await client.aio.models.generate_content_stream(
+                model=settings.chat_model,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=0.3,
+                ),
+            ):
+                if chunk.text:
+                    full_response += chunk.text
+                    yield f"data: {json.dumps({'type': 'token', 'content': chunk.text})}\n\n"
+            break
+        except Exception as error:
+            last_error = error
+            if full_response:
+                raise
+    else:
+        raise RuntimeError("Tất cả Gemini API key đều không thể tạo câu trả lời") from last_error
 
     yield f"data: {json.dumps({'type': 'done', 'full_content': full_response})}\n\n"

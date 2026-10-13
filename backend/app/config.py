@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # Google Gemini
     gemini_api_key: str = ""
+    gemini_api_keys: str = ""
 
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/notebooklm"
@@ -48,6 +49,11 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @property
+    def gemini_api_key_list(self) -> list[str]:
+        configured = self.gemini_api_keys or self.gemini_api_key
+        return [key.strip() for key in configured.replace("\n", ",").split(",") if key.strip()]
 
 
 @lru_cache

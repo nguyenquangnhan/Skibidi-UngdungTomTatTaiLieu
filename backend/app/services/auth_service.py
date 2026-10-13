@@ -19,9 +19,18 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def create_access_token(user_id: str, email: str) -> str:
+def create_access_token(user_id: str | None = None, email: str | None = None, *, data: dict | None = None) -> str:
+    if data is not None:
+        payload = dict(data)
+    else:
+        if user_id is None:
+            raise ValueError("user_id is required")
+        payload = {"sub": user_id}
+        if email is not None:
+            payload["email"] = email
+
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": user_id, "email": email, "exp": expire}
+    payload["exp"] = expire
     return jwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
 
 
@@ -68,9 +77,28 @@ async def verify_google_token(id_token: str) -> dict:
         )
     if resp.status_code != 200:
         raise ValueError("Google token không hợp lệ")
+
     data = resp.json()
-    if settings.google_client_id and data.get("aud") != settings.google_client_id:
-        raise ValueError("Google token không khớp client ID")
+    if not isinstance(data, dict):
+        raise ValueError("Google token không hợp lệ")
+
+    if data.get("email_verified") is not True:
+        raise ValueError("Google email chưa được xác thực")
+
+    issuer = data.get("iss")
+    valid_issuers = {"https://accounts.google.com", "accounts.google.com"}
+    if issuer not in valid_issuers:
+        raise ValueError("Google token issuer không hợp lệ")
+
+    aud = data.get("aud")
+    if settings.google_client_id:
+        if isinstance(aud, list):
+            valid_audience = settings.google_client_id in aud
+        else:
+            valid_audience = aud == settings.google_client_id
+        if not valid_audience:
+            raise ValueError("Google token không khớp client ID")
+
     return data
 
 

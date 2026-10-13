@@ -13,6 +13,18 @@ from app.models.notebook import Notebook, Source, ChatMessage, ProcessingStatus,
 from app.services import document_processor, embedding_service, neo4j_service
 
 settings = get_settings()
+UPLOAD_ROOT = Path(settings.upload_dir).resolve()
+
+
+def _validated_upload_path(file_path: str | None) -> Path | None:
+    if not file_path:
+        return None
+    resolved = Path(file_path).resolve()
+    try:
+        resolved.relative_to(UPLOAD_ROOT)
+    except ValueError as exc:
+        raise ValueError("File path không hợp lệ") from exc
+    return resolved
 
 
 # ─── Notebook CRUD ────────────────────────────────────────────────────────────
@@ -47,8 +59,12 @@ async def delete_notebook(db: AsyncSession, notebook_id: str, user_id: str) -> b
     sources_result = await db.execute(select(Source).where(Source.notebook_id == notebook_id))
     for source in sources_result.scalars().all():
         await neo4j_service.delete_source_data(source.id)
-        if source.file_path and Path(source.file_path).exists():
-            os.remove(source.file_path)
+        try:
+            file_path = _validated_upload_path(source.file_path)
+            if file_path and file_path.exists():
+                file_path.unlink()
+        except ValueError:
+            pass
     await db.delete(nb)
     await db.commit()
     return True
@@ -75,8 +91,12 @@ async def delete_source(db: AsyncSession, source_id: str, notebook_id: str) -> b
     if not source:
         return False
     await neo4j_service.delete_source_data(source_id)
-    if source.file_path and Path(source.file_path).exists():
-        os.remove(source.file_path)
+    try:
+        file_path = _validated_upload_path(source.file_path)
+        if file_path and file_path.exists():
+            file_path.unlink()
+    except ValueError:
+        pass
     await db.delete(source)
     await db.commit()
     return True
