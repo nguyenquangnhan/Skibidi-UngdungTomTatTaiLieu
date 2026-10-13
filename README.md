@@ -416,7 +416,7 @@ Truy cập: http://localhost:3000
 
 ---
 
-## 🔧 Cấu Hình Môi Trường
+## 🔧 Biến Môi Trường
 
 Các biến môi trường mẫu nằm trong [backend/.env.example](backend/.env.example)
 và [frontend/.env.local.example](frontend/.env.local.example). Hãy sao chép
@@ -460,6 +460,11 @@ GOOGLE_CLIENT_ID=your_google_client_id
 
 # CORS
 CORS_ORIGINS=http://localhost:3000
+```
+
+### Frontend (`.env.local`)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
