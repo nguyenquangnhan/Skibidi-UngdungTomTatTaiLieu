@@ -424,6 +424,44 @@ chúng thành `.env` hoặc `.env.local` trên máy cá nhân rồi điền giá
 Các file này đã được gitignore; không đưa API key, mật khẩu, JWT secret hoặc
 file môi trường thật vào Git hay README.
 
+Ví dụ cấu hình backend an toàn:
+
+```env
+# Google Gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+# Tùy chọn: nhiều key, phân tách bằng dấu phẩy để fallback
+GEMINI_API_KEYS=your_first_gemini_api_key,your_second_gemini_api_key
+
+# PostgreSQL
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/notebooklm
+
+# Neo4j
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=neo4j_password
+
+# RAG Settings
+CHAT_MODEL=gemini-2.5-flash
+EMBEDDING_MODEL=models/gemini-embedding-001
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+RAG_TOP_K=5
+
+# PaddleOCR
+PADDLE_OCR_LANG=vi
+PADDLE_USE_GPU=false
+
+# Auth (JWT)
+JWT_SECRET_KEY=change-me-to-a-strong-random-secret-key
+ACCESS_TOKEN_EXPIRE_MINUTES=10080
+
+# Google OAuth2 (optional)
+GOOGLE_CLIENT_ID=your_google_client_id
+
+# CORS
+CORS_ORIGINS=http://localhost:3000
+```
+
 ---
 
 ## 🧪 Testing & Đánh Giá
