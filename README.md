@@ -390,7 +390,8 @@ PostgreSQL chạy tại `localhost:5432`, Neo4j tại `localhost:7474` (HTTP) / 
 ```bash
 cd backend
 cp .env.example .env
-# Chỉnh sửa .env: thêm GEMINI_API_KEY và các thông số cần thiết
+# Chỉnh sửa .env bằng các giá trị local của bạn.
+# Không commit .env hoặc đưa secret vào README.
 ```
 
 ### 3. Chạy Backend
@@ -415,47 +416,13 @@ Truy cập: http://localhost:3000
 
 ---
 
-## 🔧 Biến Môi Trường
+## 🔧 Cấu Hình Môi Trường
 
-### Backend (`.env`)
-```env
-# Google Gemini
-GEMINI_API_KEY=your_gemini_api_key_here
-
-# PostgreSQL
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/notebooklm
-
-# Neo4j
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=neo4j_password
-
-# RAG Settings
-CHAT_MODEL=gemini-2.5-flash
-EMBEDDING_MODEL=models/gemini-embedding-001
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
-RAG_TOP_K=5
-
-# PaddleOCR
-PADDLE_OCR_LANG=vi
-PADDLE_USE_GPU=false
-
-# Auth (JWT)
-JWT_SECRET_KEY=change-me-to-a-strong-random-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=10080
-
-# Google OAuth2 (optional)
-GOOGLE_CLIENT_ID=your_google_client_id
-
-# CORS
-CORS_ORIGINS=http://localhost:3000
-```
-
-### Frontend (`.env.local`)
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
+Các biến môi trường mẫu nằm trong [backend/.env.example](backend/.env.example)
+và [frontend/.env.local.example](frontend/.env.local.example). Hãy sao chép
+chúng thành `.env` hoặc `.env.local` trên máy cá nhân rồi điền giá trị local.
+Các file này đã được gitignore; không đưa API key, mật khẩu, JWT secret hoặc
+file môi trường thật vào Git hay README.
 
 ---
 
