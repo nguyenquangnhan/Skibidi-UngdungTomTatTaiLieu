@@ -16,5 +16,7 @@ Nhiệm vụ của bạn là hỗ trợ xây dựng, tối ưu và kiểm thử 
 3. **Git Cleanliness:** Không sửa trực tiếp các file cấu hình hệ thống nếu không được yêu cầu.
 
 ## 4. Operational Instructions
-- Khi người dùng yêu cầu xử lý giao diện -> Tham chiếu quy chuẩn UI trong Skill thiết kế.
+- Khi người dùng yêu cầu xử lý giao diện -> Tham chiếu quy chuẩn UI trong Skill thiết kế (`.agents/skills/open-design/SKILL.md`).
 - Khi người dùng yêu cầu xử lý tài liệu / tóm tắt -> Tham chiếu quy trình tại `myskill/SKILL.md`.
+- Khi người dùng yêu cầu kiểm thử / automation Mobile (Flutter) -> Tham chiếu quy chuẩn tại `.agents/skills/maestro/SKILL.md`.
+- Khi người dùng yêu cầu kiểm thử E2E / browser automation Web (Next.js) -> Tham chiếu quy chuẩn tại `.agents/skills/playwright/SKILL.md`.

@@ -1,0 +1,20 @@
+appId: dev.example.flutteragenticstarter
+---
+# Luồng kiểm thử Maestro cho Flutter Mobile App (Skibidi Starter)
+- launchApp:
+    clearState: true
+
+# 1. Xác nhận giao diện khởi động
+- assertVisible: "Home"
+
+# 2. Kiểm tra nút tải dữ liệu thành phố / tài liệu
+- assertVisible: "Load cities"
+- tapOn: "Load cities"
+
+# 3. Chờ trạng thái tải và xác nhận dữ liệu hiển thị
+- extendedWaitUntil:
+    visible: "Da Nang"
+    timeout: 10000
+
+# 4. Chụp ảnh màn hình báo cáo kiểm thử
+- takeScreenshot: test-reports/flutter_home_loaded
