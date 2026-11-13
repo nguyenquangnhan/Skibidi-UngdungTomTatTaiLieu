@@ -469,6 +469,39 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
+## 📖 Hướng Dẫn Sử Dụng
+
+### 1. Truy cập ứng dụng
+Sau khi khởi động Docker (PostgreSQL + Neo4j), Backend (`http://localhost:8000`) và Frontend (`http://localhost:3000`):
+- Mở trình duyệt và truy cập **[http://localhost:3000](http://localhost:3000)**.
+- Có thể kiểm tra nhanh API Backend tại **[http://localhost:8000/docs](http://localhost:8000/docs)** (Swagger UI) hoặc **[http://localhost:8000/api/health](http://localhost:8000/api/health)**.
+
+### 2. Đăng ký & Đăng nhập
+- Tại màn hình chính, chọn **Đăng ký** để tạo tài khoản mới bằng Email & Mật khẩu, hoặc chọn **Đăng nhập**.
+- Hỗ trợ đăng nhập nhanh bằng **Google** nếu đã cấu hình `GOOGLE_CLIENT_ID`.
+
+### 3. Tạo Notebook mới
+- Nhấn nút **Tạo Notebook mới**, nhập tên chủ đề (ví dụ: *Nghiên cứu AI*, *Tài liệu môn học*) để quản lý các nguồn tài liệu và lịch sử hỏi đáp riêng biệt.
+
+### 4. Tải lên & Nạp tài liệu (PDF, Ảnh, URL)
+Trong không gian làm việc của Notebook, chọn khung **Thêm nguồn tài liệu**:
+- **Tải tệp tin (`PDF / Ảnh`):** Kéo thả hoặc bấm chọn file `.pdf`, `.png`, `.jpg`, `.jpeg`, `.webp` (tối đa 50MB).
+  - Giao diện sẽ hiển thị **thanh tiến độ phần trăm (`0%` → `100%`)** trong quá trình tải tệp lên máy chủ.
+  - Hệ thống tự động trích xuất nội dung bằng **PyMuPDF** (PDF có lớp text) hoặc **Google Gemini Multimodal OCR** (kèm fallback **PaddleOCR** cho PDF scan/ảnh), sau đó tạo vector 768 chiều và xây dựng đồ thị tri thức.
+- **Liên kết Web (`URL`):** Dán đường dẫn bài viết/trang web cần phân tích và nhấn **Nạp**.
+- Danh sách tài liệu sẽ tự động cập nhật trạng thái từ `Chờ xử lý` / `Đang OCR / Xử lý` sang **`Sẵn sàng`** kèm số lượng đoạn văn bản (`chunks`) đã lập chỉ mục.
+
+### 5. Hỏi đáp & Tóm tắt tài liệu (GraphRAG Chat)
+- Ở tab **Chat**, nhập câu hỏi hoặc yêu cầu tóm tắt (ví dụ: *"Tóm tắt các ý chính của tài liệu"*, *"So sánh hai khái niệm X và Y"*), nhấn `Enter` để gửi (`Shift + Enter` để xuống dòng).
+- AI phản hồi trực tiếp theo luồng (**SSE Streaming**) dựa trên ngữ cảnh kết hợp giữa Vector Search và Knowledge Graph.
+- Nhấp vào tên tài liệu ở cột nguồn hoặc phần trích dẫn để mở **SourceViewer** xem lại tài liệu gốc.
+
+### 6. Trực quan hóa Đồ thị Tri thức (Knowledge Graph)
+- Chuyển sang tab **Đồ thị Tri thức** để quan sát mạng lưới 2D các thực thể (`Person`, `Organization`, `Concept`, `Location`, `Event`, `Other`) và các mối quan hệ giữa chúng.
+- Bạn có thể nhấn vào các nhãn loại thực thể trên thanh lọc để lọc đồ thị, kéo thả các node hoặc cuộn chuột để phóng to/thu nhỏ.
+
+---
+
 ## 🧪 Testing & Đánh Giá
 
 ```bash
