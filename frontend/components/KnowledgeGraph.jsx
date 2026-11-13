@@ -1,8 +1,11 @@
 'use client'
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { Network, RefreshCw, Layers, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import dynamic from 'next/dynamic'
+import { Network, RefreshCw, Layers } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import LoadingSpinner from './LoadingSpinner'
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
 const TYPE_COLORS = {
   Person: '#818cf8',      // Soft Indigo
@@ -15,7 +18,7 @@ const TYPE_COLORS = {
 
 export default function KnowledgeGraph({ notebookId }) {
   const containerRef = useRef(null)
-  const graphRef = useRef(null)
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [graphData, setGraphData] = useState(null)
@@ -42,93 +45,49 @@ export default function KnowledgeGraph({ notebookId }) {
   }, [fetchGraph])
 
   useEffect(() => {
-    if (!graphData || !containerRef.current || typeof window === 'undefined') return
-    if (graphData.nodes.length === 0) return
+    const el = containerRef.current
+    if (!el) return
 
-    // Dynamically import react-force-graph-2d
-    import('react-force-graph-2d').then(({ default: ForceGraph2D }) => {
-      if (!containerRef.current) return
-
-      const filteredNodes = activeFilter === 'ALL'
-        ? graphData.nodes
-        : graphData.nodes.filter(n => n.type === activeFilter)
-
-      const nodeIds = new Set(filteredNodes.map(n => n.id))
-      const filteredEdges = graphData.edges.filter(
-        e => nodeIds.has(e.source?.id || e.source) && nodeIds.has(e.target?.id || e.target)
-      )
-
-      const fgData = {
-        nodes: filteredNodes.map(n => ({
-          id: n.id,
-          label: n.label || n.id,
-          type: n.type || 'Other',
-          color: TYPE_COLORS[n.type] || TYPE_COLORS.Other,
-        })),
-        links: filteredEdges.map(e => ({
-          source: e.source,
-          target: e.target,
-          label: e.label || '',
-        })),
+    const updateSize = () => {
+      if (el) {
+        setDimensions({ width: el.clientWidth, height: el.clientHeight })
       }
+    }
+    updateSize()
 
-      const { createElement } = require('react')
-      const { createRoot } = require('react-dom/client')
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateSize)
+      observer.observe(el)
+      return () => observer.disconnect()
+    }
+    window.addEventListener('resize', updateSize)
+    return () => window.removeEventListener('resize', updateSize)
+  }, [])
 
-      if (graphRef.current) {
-        graphRef.current.unmount?.()
-      }
+  const fgData = useMemo(() => {
+    if (!graphData || graphData.nodes.length === 0) return null
 
-      const root = createRoot(containerRef.current)
-      graphRef.current = root
+    const filteredNodes = activeFilter === 'ALL'
+      ? graphData.nodes
+      : graphData.nodes.filter(n => n.type === activeFilter)
 
-      root.render(
-        createElement(ForceGraph2D, {
-          graphData: fgData,
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-          backgroundColor: '#090a0f',
-          nodeLabel: 'label',
-          nodeColor: 'color',
-          nodeRelSize: 6,
-          linkColor: () => 'rgba(255, 255, 255, 0.12)',
-          linkWidth: 1.5,
-          linkDirectionalArrowLength: 4,
-          linkDirectionalArrowRelPos: 0.95,
-          linkLabel: 'label',
-          nodeCanvasObject: (node, ctx, globalScale) => {
-            const label = node.label
-            const fontSize = Math.max(11 / globalScale, 3.5)
-            ctx.font = `${fontSize}px Inter, sans-serif`
-            
-            // Outer subtle glow
-            ctx.beginPath()
-            ctx.arc(node.x, node.y, 6.5, 0, 2 * Math.PI)
-            ctx.fillStyle = node.color
-            ctx.shadowColor = node.color
-            ctx.shadowBlur = 8
-            ctx.fill()
-            ctx.shadowBlur = 0
+    const nodeIds = new Set(filteredNodes.map(n => n.id))
+    const filteredEdges = graphData.edges.filter(
+      e => nodeIds.has(e.source?.id || e.source) && nodeIds.has(e.target?.id || e.target)
+    )
 
-            // Inner core
-            ctx.beginPath()
-            ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI)
-            ctx.fillStyle = '#ffffff'
-            ctx.fill()
-
-            // Label text
-            if (globalScale >= 0.75) {
-              ctx.fillStyle = '#f1f5f9'
-              ctx.textAlign = 'center'
-              ctx.fillText(label, node.x, node.y + 11)
-            }
-          },
-        })
-      )
-    })
-
-    return () => {
-      graphRef.current?.unmount?.()
+    return {
+      nodes: filteredNodes.map(n => ({
+        id: n.id,
+        label: n.label || n.id,
+        type: n.type || 'Other',
+        color: TYPE_COLORS[n.type] || TYPE_COLORS.Other,
+      })),
+      links: filteredEdges.map(e => ({
+        source: e.source,
+        target: e.target,
+        label: e.label || '',
+      })),
     }
   }, [graphData, activeFilter])
 
@@ -206,7 +165,51 @@ export default function KnowledgeGraph({ notebookId }) {
           </div>
         )}
 
-        <div ref={containerRef} className="w-full h-full" id="knowledge-graph-canvas" />
+        <div ref={containerRef} className="w-full h-full" id="knowledge-graph-canvas">
+          {fgData && dimensions.width > 0 && dimensions.height > 0 && (
+            <ForceGraph2D
+              graphData={fgData}
+              width={dimensions.width}
+              height={dimensions.height}
+              backgroundColor="#090a0f"
+              nodeLabel="label"
+              nodeColor="color"
+              nodeRelSize={6}
+              linkColor={() => 'rgba(255, 255, 255, 0.12)'}
+              linkWidth={1.5}
+              linkDirectionalArrowLength={4}
+              linkDirectionalArrowRelPos={0.95}
+              linkLabel="label"
+              nodeCanvasObject={(node, ctx, globalScale) => {
+                const label = node.label
+                const fontSize = Math.max(11 / globalScale, 3.5)
+                ctx.font = `${fontSize}px Inter, sans-serif`
+
+                // Outer subtle glow
+                ctx.beginPath()
+                ctx.arc(node.x, node.y, 6.5, 0, 2 * Math.PI)
+                ctx.fillStyle = node.color
+                ctx.shadowColor = node.color
+                ctx.shadowBlur = 8
+                ctx.fill()
+                ctx.shadowBlur = 0
+
+                // Inner core
+                ctx.beginPath()
+                ctx.arc(node.x, node.y, 4, 0, 2 * Math.PI)
+                ctx.fillStyle = '#ffffff'
+                ctx.fill()
+
+                // Label text
+                if (globalScale >= 0.75) {
+                  ctx.fillStyle = '#f1f5f9'
+                  ctx.textAlign = 'center'
+                  ctx.fillText(label, node.x, node.y + 11)
+                }
+              }}
+            />
+          )}
+        </div>
       </div>
     </div>
   )

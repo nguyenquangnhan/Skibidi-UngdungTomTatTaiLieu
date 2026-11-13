@@ -65,6 +65,19 @@ export default function HomePage() {
     } catch (e) {}
   }, [authFetch])
 
+  // Auto-poll sources while any document is pending or processing
+  useEffect(() => {
+    if (!selectedNotebook?.id) return
+    const hasPending = sources.some(s => s.status === 'pending' || s.status === 'processing')
+    if (!hasPending) return
+
+    const timer = setInterval(() => {
+      loadSources(selectedNotebook.id)
+    }, 2500)
+
+    return () => clearInterval(timer)
+  }, [selectedNotebook?.id, sources, loadSources])
+
   const openNotebook = useCallback((notebook) => {
     setSelectedNotebook(notebook)
     setView('notebook')

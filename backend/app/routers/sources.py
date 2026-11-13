@@ -93,7 +93,7 @@ async def upload_file(
     )
 
     # Process in background
-    asyncio.create_task(notebook_service.process_source_background(db, source))
+    asyncio.create_task(notebook_service.process_source_background(source.id))
 
     return source
 
@@ -110,7 +110,7 @@ async def add_url(
         raise HTTPException(status_code=404, detail="Notebook không tồn tại")
 
     source = await notebook_service.create_url_source(db, notebook_id, body.url, body.title)
-    asyncio.create_task(notebook_service.process_source_background(db, source))
+    asyncio.create_task(notebook_service.process_source_background(source.id))
     return source
 
 

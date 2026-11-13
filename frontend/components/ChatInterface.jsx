@@ -177,7 +177,12 @@ export default function ChatInterface({ notebookId, onSelectSource }) {
       })
 
       if (!res.ok) {
-        throw new Error('Lỗi máy chủ khi xử lý câu hỏi.')
+        let errDetail = 'Lỗi máy chủ khi xử lý câu hỏi.'
+        try {
+          const errData = await res.json()
+          if (errData?.detail) errDetail = errData.detail
+        } catch (_) {}
+        throw new Error(errDetail)
       }
 
       const reader = res.body.getReader()
@@ -220,9 +225,13 @@ export default function ChatInterface({ notebookId, onSelectSource }) {
         }
       }
     } catch (err) {
+      const errorMsg =
+        err.name === 'TypeError'
+          ? 'Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại dịch vụ Backend.'
+          : err.message || 'Đã xảy ra lỗi khi xử lý câu hỏi.'
       setMessages(prev => prev.map(m =>
         m.id === aiMsgId
-          ? { ...m, content: 'Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại dịch vụ Backend.', isStreaming: false }
+          ? { ...m, content: errorMsg, isStreaming: false }
           : m
       ))
     } finally {

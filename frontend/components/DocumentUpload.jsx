@@ -1,6 +1,6 @@
 'use client'
-import { useState, useCallback } from 'react'
-import { Upload, Link, FileText, Globe, Loader2, ArrowUpCircle } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { Upload, Link, FileText, Globe, Loader2, ArrowUpCircle, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
 export default function DocumentUpload({ notebookId, onSourceAdded }) {
@@ -8,37 +8,92 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
   const [dragging, setDragging] = useState(false)
   const [url, setUrl] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadingFileName, setUploadingFileName] = useState('')
+  const [uploadDone, setUploadDone] = useState(false)
   const [error, setError] = useState('')
-  const { authFetch } = useAuth()
+  const hideTimerRef = useRef(null)
+  const { authFetch, token, apiUrl, logout } = useAuth()
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+  }, [])
 
   const uploadFile = useCallback(async (file) => {
     if (!file) return
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
     setUploading(true)
+    setUploadDone(false)
+    setUploadProgress(0)
+    setUploadingFileName(file.name)
     setError('')
     const formData = new FormData()
     formData.append('file', file)
+
     try {
-      const res = await authFetch(`/api/notebooks/${notebookId}/sources/upload`, {
-        method: 'POST',
-        body: formData,
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        let msg = 'Upload tài liệu thất bại'
-        if (typeof data.detail === 'string') {
-          msg = data.detail
-        } else if (Array.isArray(data.detail)) {
-          msg = data.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+      const data = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', `${apiUrl}/api/notebooks/${notebookId}/sources/upload`)
+        if (token) {
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`)
         }
-        throw new Error(msg)
-      }
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100)
+            setUploadProgress(percent)
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status === 401) {
+            logout()
+            reject(new Error('Phiên đăng nhập hết hạn'))
+            return
+          }
+          let parsed = {}
+          try {
+            parsed = JSON.parse(xhr.responseText || '{}')
+          } catch (_) {}
+
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setUploadProgress(100)
+            resolve(parsed)
+          } else {
+            let msg = 'Upload tài liệu thất bại'
+            if (typeof parsed.detail === 'string') {
+              msg = parsed.detail
+            } else if (Array.isArray(parsed.detail)) {
+              msg = parsed.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+            }
+            reject(new Error(msg))
+          }
+        }
+
+        xhr.onerror = () => {
+          reject(new Error('Lỗi kết nối khi tải tài liệu lên máy chủ'))
+        }
+
+        xhr.send(formData)
+      })
+
+      setUploadDone(true)
       onSourceAdded?.(data)
+      hideTimerRef.current = setTimeout(() => {
+        setUploadDone(false)
+        setUploadProgress(0)
+        setUploadingFileName('')
+      }, 2000)
     } catch (err) {
       setError(err.message)
+      setUploadProgress(0)
+      setUploadingFileName('')
     } finally {
       setUploading(false)
     }
-  }, [authFetch, notebookId, onSourceAdded])
+  }, [apiUrl, token, logout, notebookId, onSourceAdded])
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()
@@ -50,6 +105,7 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
   const handleFileInput = useCallback((e) => {
     const file = e.target.files[0]
     if (file) uploadFile(file)
+    e.target.value = ''
   }, [uploadFile])
 
   const handleUrl = useCallback(async (e) => {
@@ -117,20 +173,55 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
           />
 
           <div className="flex flex-col items-center">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 bg-indigo-500/10 border border-indigo-500/25 text-indigo-400 group-hover:scale-110 transition-transform">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 border group-hover:scale-110 transition-transform ${
+              uploadDone
+                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400'
+                : 'bg-indigo-500/10 border-indigo-500/25 text-indigo-400'
+            }`}>
               {uploading ? (
                 <Loader2 size={18} className="animate-spin" />
+              ) : uploadDone ? (
+                <CheckCircle2 size={20} />
               ) : (
                 <ArrowUpCircle size={20} />
               )}
             </div>
 
-            <p className="text-xs font-semibold text-white mb-1">
-              {uploading ? 'Đang nạp và trích xuất tài liệu...' : 'Kéo thả file hoặc nhấp để chọn'}
+            <p className="text-xs font-semibold text-white mb-1 truncate max-w-full px-2">
+              {uploading || uploadDone
+                ? uploadingFileName || 'Đang tải tài liệu lên...'
+                : 'Kéo thả file hoặc nhấp để chọn'}
             </p>
-            <p className="text-[11px] text-slate-400">
-              PDF văn bản, PDF scan (PP-OCRv6), PNG, JPG, WEBP (&lt; 50MB)
-            </p>
+            {uploading || uploadDone ? (
+              <div className="w-full max-w-[240px] mt-1.5 space-y-1.5">
+                <div className="w-full h-2 rounded-full bg-white/[0.08] overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-200 ${
+                      uploadDone
+                        ? 'bg-emerald-500'
+                        : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                    }`}
+                    style={{ width: `${uploadDone ? 100 : uploadProgress}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-medium">
+                  <span>
+                    {uploadDone
+                      ? 'Đã tải lên hoàn tất'
+                      : uploadProgress === 100
+                        ? 'Đang lưu trên máy chủ...'
+                        : 'Đang tải lên'}
+                  </span>
+                  <span className={uploadDone ? 'text-emerald-400 font-semibold' : 'text-indigo-400 font-semibold'}>
+                    {uploadDone ? 100 : uploadProgress}%
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                PDF văn bản, PDF scan (Gemini OCR / PP-OCRv6), PNG, JPG, WEBP (&lt; 50MB)
+              </p>
+            )}
           </div>
         </label>
       ) : (

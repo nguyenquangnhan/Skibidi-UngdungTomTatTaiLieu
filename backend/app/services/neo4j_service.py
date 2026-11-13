@@ -4,6 +4,7 @@ Neo4j Service
 - Knowledge Graph extraction via Gemini structured output
 - Vector index initialization
 """
+import asyncio
 import json
 from neo4j import AsyncGraphDatabase
 from google import genai
@@ -134,15 +135,19 @@ Văn bản:
 
 Chỉ trả về JSON, không có text khác."""
 
+    loop = asyncio.get_running_loop()
     response = None
     last_error = None
     for client in get_gemini_clients():
         try:
-            response = client.models.generate_content(
-                model=settings.chat_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
+            response = await loop.run_in_executor(
+                None,
+                lambda c=client: c.models.generate_content(
+                    model=settings.chat_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                    ),
                 ),
             )
             break

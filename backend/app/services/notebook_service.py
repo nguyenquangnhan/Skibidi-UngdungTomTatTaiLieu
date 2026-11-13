@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.config import get_settings
+from app.database import AsyncSessionLocal
 from app.models.notebook import Notebook, Source, ChatMessage, ProcessingStatus, SourceType
 from app.services import document_processor, embedding_service, neo4j_service
 
@@ -136,38 +137,59 @@ async def create_url_source(db: AsyncSession, notebook_id: str, url: str, title:
     return source
 
 
-async def process_source_background(db: AsyncSession, source: Source):
-    """Run document processing pipeline asynchronously."""
-    # Mark as processing
-    source.status = ProcessingStatus.processing
-    await db.commit()
+async def process_source_background(source_id: str):
+    """Run document processing pipeline asynchronously using a dedicated DB session."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Source).where(Source.id == source_id))
+        source = result.scalar_one_or_none()
+        if not source:
+            return
 
-    try:
-        # Extract text
-        if source.source_type == SourceType.url:
-            title, text = await document_processor.extract_text_from_url(source.url)
-            if not source.title or source.title == source.url:
-                source.title = title
-        else:
-            text = await document_processor.process_document(source.file_path, source.source_type.value)
+        # Mark as processing
+        source.status = ProcessingStatus.processing
+        source.error_message = None
+        await db.commit()
 
-        if not text.strip():
-            raise ValueError("Không trích xuất được nội dung từ tài liệu")
+        try:
+            # Extract text
+            if source.source_type == SourceType.url:
+                title, text = await document_processor.extract_text_from_url(source.url)
+                if not source.title or source.title == source.url:
+                    source.title = title
+            else:
+                text = await document_processor.process_document(source.file_path, source.source_type.value)
 
-        # Embed and store chunks
-        nb_id = source.notebook_id
-        chunk_count = await embedding_service.embed_and_store(source.id, nb_id, text)
+            if not text.strip():
+                raise ValueError("Không trích xuất được nội dung từ tài liệu")
 
-        # Extract Knowledge Graph (background, don't block)
-        asyncio.create_task(neo4j_service.extract_and_store_knowledge_graph(source.id, text))
+            # Embed and store chunks
+            nb_id = source.notebook_id
+            chunk_count = await embedding_service.embed_and_store(source.id, nb_id, text)
 
-        source.status = ProcessingStatus.completed
-        source.chunk_count = chunk_count
-    except Exception as e:
-        source.status = ProcessingStatus.failed
-        source.error_message = str(e)
+            # Extract Knowledge Graph (background, don't block)
+            asyncio.create_task(neo4j_service.extract_and_store_knowledge_graph(source.id, text))
 
-    await db.commit()
+            source.status = ProcessingStatus.completed
+            source.chunk_count = chunk_count
+        except Exception as e:
+            print(f"[ProcessSource] Error processing source {source_id}: {e}")
+            source.status = ProcessingStatus.failed
+            source.error_message = str(e)
+
+        await db.commit()
+
+
+async def resume_pending_sources():
+    """Resume any sources stuck in pending/processing after a server restart."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Source.id).where(
+                Source.status.in_([ProcessingStatus.pending, ProcessingStatus.processing])
+            )
+        )
+        source_ids = [row[0] for row in result.all()]
+        for sid in source_ids:
+            asyncio.create_task(process_source_background(sid))
 
 
 # ─── Chat History ─────────────────────────────────────────────────────────────

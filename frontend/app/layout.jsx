@@ -15,8 +15,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi" className="dark">
-      <body className={`${inter.variable} font-sans`}>
+    <html lang="vi" className="dark" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <AuthProvider>
           {children}
         </AuthProvider>

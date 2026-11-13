@@ -4,6 +4,7 @@ Embedding Service
 - Generate embeddings via Gemini Embedding API
 - Store chunks + embeddings to Neo4j
 """
+import asyncio
 import uuid
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
@@ -22,6 +23,7 @@ def get_embedder() -> GoogleGenerativeAIEmbeddings:
         _embedder = GoogleGenerativeAIEmbeddings(
             model=settings.embedding_model,
             google_api_key=settings.gemini_api_key_list[0] if settings.gemini_api_key_list else "",
+            output_dimensionality=settings.embedding_dim,
         )
     return _embedder
 
@@ -41,14 +43,17 @@ async def embed_and_store(source_id: str, notebook_id: str, text: str) -> int:
     if not chunks:
         return 0
 
+    loop = asyncio.get_running_loop()
     embeddings = None
     last_error = None
     for key in settings.gemini_api_key_list:
         try:
-            embeddings = GoogleGenerativeAIEmbeddings(
+            embedder = GoogleGenerativeAIEmbeddings(
                 model=settings.embedding_model,
                 google_api_key=key,
-            ).embed_documents(chunks)
+                output_dimensionality=settings.embedding_dim,
+            )
+            embeddings = await loop.run_in_executor(None, embedder.embed_documents, chunks)
             break
         except Exception as error:
             last_error = error
@@ -70,14 +75,17 @@ async def embed_and_store(source_id: str, notebook_id: str, text: str) -> int:
 
 
 async def embed_query(query: str) -> list[float]:
-    """Embed a single query string."""
+    """Embed a single query string without blocking the event loop."""
+    loop = asyncio.get_running_loop()
     last_error = None
     for key in settings.gemini_api_key_list:
         try:
-            return GoogleGenerativeAIEmbeddings(
+            embedder = GoogleGenerativeAIEmbeddings(
                 model=settings.embedding_model,
                 google_api_key=key,
-            ).embed_query(query)
+                output_dimensionality=settings.embedding_dim,
+            )
+            return await loop.run_in_executor(None, embedder.embed_query, query)
         except Exception as error:
             last_error = error
     raise RuntimeError("Tất cả Gemini API key đều không thể tạo query embedding") from last_error
