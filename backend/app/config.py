@@ -1,9 +1,17 @@
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
+_BACKEND_DIR = Path(__file__).resolve().parent.parent
+_ENV_FILE = _BACKEND_DIR / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(_ENV_FILE, ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "Skibidi"
     embedding_dim: int = 768
@@ -11,6 +19,9 @@ class Settings(BaseSettings):
     # Google Gemini
     gemini_api_key: str = ""
     gemini_api_keys: str = ""
+
+    # OCR Settings: "auto" (Gemini Multimodal with Paddle fallback), "gemini", "paddle"
+    ocr_provider: str = "auto"
 
     # PostgreSQL
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/notebooklm"

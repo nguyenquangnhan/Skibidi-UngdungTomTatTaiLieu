@@ -35,13 +35,22 @@ export function AuthProvider({ children }) {
   }, [])
 
   const authFetch = useCallback(async (path, options = {}) => {
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+
+    const headers = {
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    }
+
+    if (isFormData) {
+      delete headers['Content-Type']
+      delete headers['content-type']
+    }
+
     const res = await fetch(`${API_URL}${path}`, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options.headers,
-      },
+      headers,
     })
     if (res.status === 401) {
       logout()

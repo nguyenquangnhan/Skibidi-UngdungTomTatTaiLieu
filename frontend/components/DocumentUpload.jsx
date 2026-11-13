@@ -20,11 +20,18 @@ export default function DocumentUpload({ notebookId, onSourceAdded }) {
     try {
       const res = await authFetch(`/api/notebooks/${notebookId}/sources/upload`, {
         method: 'POST',
-        headers: {},
         body: formData,
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.detail || 'Upload tài liệu thất bại')
+      if (!res.ok) {
+        let msg = 'Upload tài liệu thất bại'
+        if (typeof data.detail === 'string') {
+          msg = data.detail
+        } else if (Array.isArray(data.detail)) {
+          msg = data.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+        }
+        throw new Error(msg)
+      }
       onSourceAdded?.(data)
     } catch (err) {
       setError(err.message)

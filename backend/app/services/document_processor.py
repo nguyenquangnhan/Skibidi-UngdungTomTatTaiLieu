@@ -25,8 +25,10 @@ import pypdf
 import httpx
 from PIL import Image
 from bs4 import BeautifulSoup
+from google.genai import types
 
 from app.config import get_settings
+from app.services.gemini_client import get_gemini_clients
 
 settings = get_settings()
 
@@ -74,16 +76,57 @@ def _ocr_image_bytes(image_bytes: bytes) -> str:
     return "\n".join(lines)
 
 
+def _ocr_with_gemini_sync(image_bytes: bytes, mime_type: str = "image/png") -> str:
+    """Run Google Gemini Multimodal OCR on raw image bytes."""
+    clients = get_gemini_clients()
+    prompt = (
+        "Bạn là công cụ trích xuất văn bản (OCR) chuyên nghiệp, hỗ trợ tiếng Việt và đa ngôn ngữ. "
+        "Hãy đọc toàn bộ văn bản có trong hình ảnh/trang tài liệu này một cách trung thực và chính xác nhất.\n"
+        "- Giữ nguyên dấu tiếng Việt, bố cục, dấu xuống dòng, định dạng danh sách và bảng biểu.\n"
+        "- Chỉ trả về nội dung văn bản trích xuất được. Tuyệt đối không thêm lời dẫn, chú thích hoặc giải thích."
+    )
+    last_err = None
+    for client in clients:
+        try:
+            response = client.models.generate_content(
+                model=settings.chat_model,
+                contents=[
+                    types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                    prompt,
+                ],
+            )
+            return (response.text or "").strip()
+        except Exception as e:
+            last_err = e
+            continue
+    raise RuntimeError(f"Tất cả Gemini API client đều gặp lỗi khi OCR: {last_err}")
+
+
+async def ocr_image_with_gemini(image_bytes: bytes, mime_type: str = "image/png") -> str:
+    """Async wrapper for Google Gemini Multimodal OCR."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _ocr_with_gemini_sync, image_bytes, mime_type)
+
+
+def _render_pdf_page_png(pdf_bytes: bytes, page_num: int, dpi: int = 120) -> bytes:
+    """Render a single PDF page to PNG bytes."""
+    if fitz is not None:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        page = doc[page_num]
+        mat = fitz.Matrix(dpi / 72, dpi / 72)
+        pix = page.get_pixmap(matrix=mat, alpha=False)
+        img_bytes = pix.tobytes("png")
+        doc.close()
+        return img_bytes
+    return b""
+
+
 def _extract_pdf_page_ocr(args: tuple[bytes, int]) -> str:
     """Extract text from a single PDF page via OCR. Designed for ProcessPoolExecutor."""
     pdf_bytes, page_num = args
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    page = doc[page_num]
-    # Render at 75 DPI
-    mat = fitz.Matrix(75 / 72, 75 / 72)
-    pix = page.get_pixmap(matrix=mat, alpha=False)
-    img_bytes = pix.tobytes("png")
-    doc.close()
+    img_bytes = _render_pdf_page_png(pdf_bytes, page_num, dpi=75)
+    if not img_bytes:
+        return ""
     return _ocr_image_bytes(img_bytes)
 
 
@@ -116,24 +159,75 @@ async def extract_text_from_pdf(file_path: str) -> str:
                 needs_ocr_pages.append(i)
 
     if needs_ocr_pages:
-        # Run OCR in parallel (max 3 workers)
-        with ProcessPoolExecutor(max_workers=3) as executor:
-            tasks = [(pdf_bytes, p) for p in needs_ocr_pages]
-            ocr_results = await loop.run_in_executor(
-                None,
-                lambda: list(executor.map(_extract_pdf_page_ocr, tasks))
-            )
-        for page_num, ocr_text in zip(needs_ocr_pages, ocr_results):
-            pages_text.append((page_num, ocr_text))
+        provider = getattr(settings, "ocr_provider", "auto").lower()
+        gemini_success = False
+
+        if provider in ("gemini", "auto"):
+            try:
+                tasks = []
+                for p in needs_ocr_pages:
+                    png_bytes = _render_pdf_page_png(pdf_bytes, p, dpi=120)
+                    if png_bytes:
+                        tasks.append(ocr_image_with_gemini(png_bytes, "image/png"))
+
+                if tasks:
+                    ocr_results = await asyncio.gather(*tasks, return_exceptions=True)
+                    valid_results = []
+                    for page_num, res in zip(needs_ocr_pages, ocr_results):
+                        if isinstance(res, Exception):
+                            raise res
+                        valid_results.append((page_num, res))
+
+                    pages_text.extend(valid_results)
+                    gemini_success = True
+            except Exception as e:
+                print(f"[OCR] Gemini Vision PDF OCR failed: {e}. Fallback to PaddleOCR.")
+                if provider == "gemini":
+                    raise e
+
+        if not gemini_success:
+            # Fallback to PaddleOCR in parallel (max 3 workers)
+            with ProcessPoolExecutor(max_workers=3) as executor:
+                tasks = [(pdf_bytes, p) for p in needs_ocr_pages]
+                ocr_results = await loop.run_in_executor(
+                    None,
+                    lambda: list(executor.map(_extract_pdf_page_ocr, tasks))
+                )
+            for page_num, ocr_text in zip(needs_ocr_pages, ocr_results):
+                pages_text.append((page_num, ocr_text))
 
     pages_text.sort(key=lambda x: x[0])
     return "\n\n".join(text for _, text in pages_text if text.strip())
 
 
 async def extract_text_from_image(file_path: str) -> str:
-    """Extract text from image file using PaddleOCR."""
+    """Extract text from image file using Google Gemini Vision OCR with PaddleOCR fallback."""
     loop = asyncio.get_event_loop()
     img_bytes = Path(file_path).read_bytes()
+    ext = Path(file_path).suffix.lower().lstrip(".")
+    mime_map = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "webp": "image/webp",
+        "gif": "image/gif",
+        "bmp": "image/bmp",
+        "tiff": "image/tiff",
+    }
+    mime_type = mime_map.get(ext, "image/png")
+
+    provider = getattr(settings, "ocr_provider", "auto").lower()
+    if provider in ("gemini", "auto"):
+        try:
+            text = await ocr_image_with_gemini(img_bytes, mime_type)
+            if text:
+                return text
+        except Exception as e:
+            print(f"[OCR] Gemini Vision OCR failed on image: {e}. Fallback to PaddleOCR.")
+            if provider == "gemini":
+                raise e
+
+    # Fallback to PaddleOCR
     return await loop.run_in_executor(None, _ocr_image_bytes, img_bytes)
 
 
