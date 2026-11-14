@@ -1,0 +1,379 @@
+openapi: 3.0.3
+info:
+  title: Skibidi DocuGraph API
+  version: 1.0.0
+  description: >
+    REST & SSE Streaming API for Skibidi — an AI-powered Document Summarization,
+    Hybrid GraphRAG (PostgreSQL pgvector + Neo4j), and Knowledge Graph platform.
+servers:
+  - url: http://localhost:8000
+    description: Local Development Server
+security:
+  - BearerAuth: []
+tags:
+  - name: System
+    description: Service health and metadata
+  - name: Authentication
+    description: User registration, login, Google OAuth, and profile
+  - name: Notebooks
+    description: Notebook workspace CRUD
+  - name: Sources
+    description: Document upload (PDF/DOCX/TXT/Images), URL ingestion, and status
+  - name: Chat
+    description: Hybrid GraphRAG Q&A with Server-Sent Events (SSE) streaming
+  - name: Graph
+    description: Neo4j Knowledge Graph visualization data
+paths:
+  /:
+    get:
+      tags: [System]
+      summary: Root service metadata
+      security: []
+      responses:
+        "200":
+          description: Service info
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: Healthy status
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegister"
+      responses:
+        "201":
+          description: User created with JWT access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Email already registered or invalid input
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Authenticate with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLogin"
+      responses:
+        "200":
+          description: Authenticated JWT token and user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "401":
+          description: Invalid credentials
+  /auth/google:
+    post:
+      tags: [Authentication]
+      summary: Authenticate using Google OAuth ID token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoogleAuthRequest"
+      responses:
+        "200":
+          description: Authenticated JWT token and user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+  /auth/me:
+    get:
+      tags: [Authentication]
+      summary: Get current authenticated user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Missing or invalid JWT token
+  /api/notebooks:
+    get:
+      tags: [Notebooks]
+      summary: List notebooks owned by the current user
+      responses:
+        "200":
+          description: Array of notebooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotebookResponse"
+    post:
+      tags: [Notebooks]
+      summary: Create a new notebook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookCreate"
+      responses:
+        "201":
+          description: Created notebook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookResponse"
+  /api/notebooks/{notebook_id}:
+    delete:
+      tags: [Notebooks]
+      summary: Delete a notebook and its associated sources/chunks/graph
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "204":
+          description: Notebook deleted
+        "404":
+          description: Notebook not found
+  /api/notebooks/{notebook_id}/sources:
+    get:
+      tags: [Sources]
+      summary: List all sources inside a notebook
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: Array of sources with processing status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SourceResponse"
+  /api/notebooks/{notebook_id}/sources/upload:
+    post:
+      tags: [Sources]
+      summary: Upload a document file (PDF, DOCX, TXT, PNG, JPG) for async RAG/Graph ingestion
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Source accepted and queued for background processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceResponse"
+        "422":
+          description: Missing file or invalid multipart payload
+  /api/notebooks/{notebook_id}/sources/url:
+    post:
+      tags: [Sources]
+      summary: Ingest a web URL as a notebook source
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UrlSourceCreate"
+      responses:
+        "201":
+          description: URL source accepted and queued for background processing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourceResponse"
+  /api/notebooks/{notebook_id}/sources/{source_id}:
+    delete:
+      tags: [Sources]
+      summary: Delete a source and its chunks
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+        - $ref: "#/components/parameters/SourceId"
+      responses:
+        "204":
+          description: Source deleted
+        "404":
+          description: Source not found
+  /api/notebooks/{notebook_id}/sources/{source_id}/file:
+    get:
+      tags: [Sources]
+      summary: Download or preview the original uploaded file
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+        - $ref: "#/components/parameters/SourceId"
+      responses:
+        "200":
+          description: Binary file stream
+        "404":
+          description: File not found
+  /api/notebooks/{notebook_id}/chat:
+    get:
+      tags: [Chat]
+      summary: Retrieve chat history for a notebook
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: Array of chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessageResponse"
+    post:
+      tags: [Chat]
+      summary: Send a question and receive Hybrid GraphRAG answer via SSE stream
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatRequest"
+      responses:
+        "200":
+          description: Server-Sent Events stream (`text/event-stream`)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /api/notebooks/{notebook_id}/graph:
+    get:
+      tags: [Graph]
+      summary: Retrieve Neo4j Knowledge Graph nodes and edges for a notebook
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: Graph payload containing `nodes` and `links`
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    NotebookId:
+      name: notebook_id
+      in: path
+      required: true
+      schema:
+        type: string
+    SourceId:
+      name: source_id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    UserRegister:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+        full_name: { type: string, nullable: true }
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    GoogleAuthRequest:
+      type: object
+      required: [id_token]
+      properties:
+        id_token: { type: string }
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        full_name: { type: string, nullable: true }
+        avatar_url: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: bearer }
+        user: { $ref: "#/components/schemas/UserResponse" }
+    NotebookCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string, nullable: true }
+    NotebookResponse:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        source_count: { type: integer }
+    UrlSourceCreate:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }
+        title: { type: string, nullable: true }
+    SourceResponse:
+      type: object
+      properties:
+        id: { type: string }
+        notebook_id: { type: string }
+        title: { type: string }
+        source_type: { type: string, enum: [pdf, docx, txt, url, image] }
+        url: { type: string, nullable: true }
+        status: { type: string, enum: [pending, processing, completed, failed] }
+        error_message: { type: string, nullable: true }
+        chunk_count: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ChatRequest:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    ChatMessageResponse:
+      type: object
+      properties:
+        id: { type: string }
+        role: { type: string, enum: [user, assistant] }
+        content: { type: string }
+        sources_used: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+

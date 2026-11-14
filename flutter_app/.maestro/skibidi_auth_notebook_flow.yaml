@@ -1,0 +1,28 @@
+appId: dev.example.flutteragenticstarter
+---
+# Luồng kiểm thử Maestro E2E cho ứng dụng Skibidi Flutter (Auth + Notebooks)
+- launchApp:
+    clearState: true
+
+# 1. Xác nhận màn hình Đăng nhập hiển thị
+- assertVisible: "Email"
+- assertVisible: "Mật khẩu"
+- assertVisible: "Đăng nhập"
+
+# 2. Nhập thông tin tài khoản kiểm thử và đăng nhập
+- tapOn: "Email"
+- inputText: "demo@skibidi.ai"
+- tapOn: "Mật khẩu"
+- inputText: "Secret123!"
+- hideKeyboard
+- tapOn: "Đăng nhập"
+
+# 3. Chờ màn hình Notebooks tải xong (nếu backend đang chạy)
+- extendedWaitUntil:
+    visible: "Tạo Notebook mới"
+    timeout: 10000
+    optional: true
+
+# 4. Chụp ảnh màn hình báo cáo kiểm thử
+- takeScreenshot: test-reports/skibidi_flutter_flow
+
