@@ -224,21 +224,27 @@ def test_domain_model_instantiation():
 # ==============================================================================
 # 7. Presentation Layer: FastAPI Routes TestClient
 # ==============================================================================
-def test_fastapi_openapi_and_docs():
+async def test_fastapi_openapi_and_docs():
     """Kiểm tra API Gateway sinh schema OpenAPI và Swagger UI chính xác."""
-    client = TestClient(app)
-    response = client.get("/docs")
-    assert response.status_code == 200
+    import httpx
 
-    openapi_response = client.get("/openapi.json")
-    assert openapi_response.status_code == 200
-    schema = openapi_response.json()
-    assert schema["info"]["title"] == "Skibidi API"
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/docs")
+        assert response.status_code == 200
+
+        openapi_response = await client.get("/openapi.json")
+        assert openapi_response.status_code == 200
+        schema = openapi_response.json()
+        assert schema["info"]["title"] == "Skibidi API"
 
 
-def test_unauthorized_access_to_protected_routes():
+async def test_unauthorized_access_to_protected_routes():
     """Kiểm tra tính bảo mật: từ chối truy cập 401/403 khi chưa có token JWT."""
-    client = TestClient(app)
-    response = client.get("/api/notebooks")
-    # Phải bị chặn do thiếu Authorization Bearer header
-    assert response.status_code in [401, 403]
+    import httpx
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/api/notebooks")
+        # Phải bị chặn do thiếu Authorization Bearer header
+        assert response.status_code in [401, 403]

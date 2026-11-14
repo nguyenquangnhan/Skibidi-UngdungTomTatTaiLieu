@@ -76,9 +76,10 @@ test.describe('Skibidi Web App - E2E UI Tests', () => {
   });
 
   test('TC-03: Mở Sổ tay, xem Sources và chuyển tab Knowledge Graph', async ({ page }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem('skibidi_token', 'mock-jwt-token');
-    });
+    await page.addInitScript((user) => {
+      localStorage.setItem('token', 'mock-jwt-token');
+      localStorage.setItem('user', JSON.stringify(user));
+    }, MOCK_USER);
 
     await page.route('**/auth/me', async (route) => {
       await route.fulfill({
