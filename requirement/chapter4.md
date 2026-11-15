@@ -349,7 +349,11 @@ Bản mẫu tương tác được cấu trúc trực tiếp vào mã nguồn Fro
 | **Đồ thị tri thức 2D** | `frontend/components/KnowledgeGraph.jsx` | Nạp dữ liệu Graph từ API, ánh xạ màu theo entity type, zoom/pan mượt mà trên Canvas bằng `react-force-graph-2d`. |
 | **Bộ tải lên tài liệu** | `frontend/components/DocumentUpload.jsx` | Kéo thả file PDF/DOCX/TXT/ảnh, hiển thị thanh tiến trình thực tế `0%` → `100%` (`XMLHttpRequest`), form dán URL web tự động trích xuất. |
 | **Danh sách tài liệu** | `frontend/components/DocumentList.jsx` | Danh sách trạng thái nguồn tự động làm mới (Auto-polling 2.5s: Pending $\rightarrow$ Processing $\rightarrow$ Completed $\rightarrow$ Failed), nút xem trước và nút xóa. |
-| **Trình xem tài liệu** | `frontend/components/SourceViewer.jsx` | Modal xem trước nội dung gốc của tài liệu đã trích xuất để đối chiếu kết quả trả lời của AI. |
+| **Trình xem & Tóm tắt AI 3 tầng** | `frontend/components/SourceViewer.jsx` | Xem nội dung gốc kèm tóm tắt AI đa tầng (`TL;DR`, Luận điểm cốt lõi, Phân tích chi tiết có gắn nhãn `[Trang N]`). |
+| **Bộ sinh Trắc nghiệm AI** | `frontend/components/QuizPanel.jsx` | Tự động sinh bộ câu hỏi trắc nghiệm 4 đáp án có giải thích chi tiết từ nội dung Sổ tay và Đồ thị tri thức. |
+| **Đấu trường Trắc nghiệm Live** | `frontend/components/BattleArena.jsx` | Tạo/tham gia phòng thi đấu thời gian thực bằng mã PIN 6 số, đồng bộ đồng hồ máy chủ và bảng xếp hạng tốc độ. |
+| **Nhóm học tập Zero-Token** | `frontend/components/StudyGroups.jsx` | Tạo/tham gia nhóm bằng mã `VKUxxx`, đồng bộ thành viên và chia sẻ bản tóm tắt AI không tốn lại token. |
+| **Quản lý Hồ sơ & Bảo mật** | `frontend/components/ProfileModal.jsx` | Xem thống kê học tập cá nhân, cập nhật họ tên/ảnh đại diện (`PATCH /auth/me`) và đổi mật khẩu (`POST /auth/change-password`). |
 
 ---
 

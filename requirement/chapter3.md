@@ -255,17 +255,19 @@ Epic 1: Xác thực & Quản lý Tài khoản
   └── US-01: Đăng ký tài khoản
   └── US-02: Đăng nhập Email/Password
   └── US-03: Đăng nhập Google OAuth2
+  └── US-17: Quản lý hồ sơ, đổi mật khẩu & thống kê học tập cá nhân
 
 Epic 2: Quản lý Notebook
   └── US-04: Tạo notebook mới
   └── US-05: Xem danh sách notebooks
   └── US-06: Xóa notebook
 
-Epic 3: Xử lý Tài liệu
-  └── US-07: Upload PDF có text
-  └── US-08: Upload PDF scan (OCR)
-  └── US-09: Upload ảnh (PNG/JPG)
+Epic 3: Xử lý Tài liệu & Tóm tắt AI Đa tầng
+  └── US-07: Upload PDF có text & trích dẫn [Trang N]
+  └── US-08: Upload PDF scan (Dual OCR: Gemini Vision + PP-OCRv6)
+  └── US-09: Upload ảnh (PNG/JPG) & tài liệu DOCX/TXT/MD
   └── US-10: Thêm tài liệu từ URL
+  └── US-18: Xem tóm tắt AI 3 tầng (TL;DR, Key Points, Detailed Markdown)
 
 Epic 4: Hỏi Đáp RAG
   └── US-11: Chat hỏi đáp với AI (streaming)
@@ -278,6 +280,11 @@ Epic 5: Knowledge Graph
 Epic 6: Đánh giá Chất lượng
   └── US-15: Chạy RAGAS evaluation
   └── US-16: Xuất báo cáo Excel
+
+Epic 7: Học tập Tương tác, Đấu trí Live & Cộng tác Nhóm (Mở rộng)
+  └── US-19: Sinh câu hỏi Trắc nghiệm AI (AI Quiz Generator) từ Sổ tay
+  └── US-20: Đấu trường Trắc nghiệm Thời gian thực (Live Quiz Battle bằng mã PIN 6 số)
+  └── US-21: Nhóm học tập & Chia sẻ Học liệu Zero-Token (mã nhóm VKUxxx)
 ```
 
 ### 3.4.2 User Stories Chi tiết

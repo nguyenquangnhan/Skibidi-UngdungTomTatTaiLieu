@@ -464,6 +464,23 @@ data: {"type": "done", "full_content": "Dựa trên tài liệu..."}
 }
 ```
 
+#### 🧠 Tóm tắt Đa tầng, Trắc nghiệm AI, Đấu trí Live, Nhóm học tập & Quản lý Tài khoản
+
+| Method | Endpoint | Mô tả | Auth | Response |
+|--------|----------|-------|------|---------|
+| `GET` | `/api/notebooks/{nb_id}/sources/{src_id}/summary` | Tóm tắt AI 3 tầng (`TL;DR`, `key_points`, `summary_detailed`) | ✅ | `SourceSummary` |
+| `POST` | `/api/notebooks/{nb_id}/quiz` | Sinh câu hỏi trắc nghiệm AI từ Sổ tay & KG | ✅ | `QuizResponse` |
+| `POST` | `/api/battle/rooms` | Tạo phòng Đấu trí Live với mã PIN 6 số | — | `RoomState` |
+| `POST` | `/api/battle/rooms/{code}/join` | Tham gia phòng Đấu trí bằng mã PIN | — | `RoomState` |
+| `POST` | `/api/battle/rooms/{code}/start` | Bắt đầu trận đấu đồng bộ đồng hồ server | — | `RoomState` |
+| `POST` | `/api/battle/rooms/{code}/answer` | Gửi đáp án & tính điểm tốc độ (500–1000 điểm) | — | `RoomState` |
+| `POST` | `/api/groups` | Tạo Nhóm học tập mới (mã `VKUxxx`) | — | `StudyGroup` |
+| `POST` | `/api/groups/join` | Tham gia Nhóm học tập bằng mã PIN | — | `StudyGroup` |
+| `POST` | `/api/groups/{code}/resources` | Chia sẻ học liệu & tóm tắt AI (Zero-Token) | — | `StudyGroup` |
+| `PATCH` | `/auth/me` | Cập nhật hồ sơ (`full_name`, `avatar_url`) | ✅ | `UserResponse` |
+| `POST` | `/auth/change-password` | Đổi mật khẩu người dùng | ✅ | `{message}` |
+| `GET` | `/auth/stats` | Thống kê học tập cá nhân (Sổ tay, Tài liệu, Chunks, Chat) | ✅ | `UserStatsResponse` |
+
 ### 5.5.3 Mã Lỗi Chuẩn hóa
 
 | HTTP Status | Tình huống |

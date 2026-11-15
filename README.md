@@ -357,17 +357,27 @@ Query → Embed query → Vector search Neo4j (cosine, top-5)
 | `POST` | `/auth/register` | Đăng ký tài khoản |
 | `POST` | `/auth/login` | Đăng nhập, nhận JWT |
 | `POST` | `/auth/google` | Đăng nhập bằng Google |
+| `GET` | `/auth/me` | Xem hồ sơ người dùng hiện tại |
+| `PATCH` | `/auth/me` | Cập nhật họ tên hiển thị & ảnh đại diện |
+| `POST` | `/auth/change-password` | Đổi mật khẩu tài khoản |
+| `GET` | `/auth/stats` | Thống kê học tập cá nhân (Notebooks, Sources, Chunks, Chat) |
 | `GET` | `/api/notebooks` | Danh sách notebooks |
 | `POST` | `/api/notebooks` | Tạo notebook mới |
 | `DELETE` | `/api/notebooks/{id}` | Xóa notebook |
-| `POST` | `/api/notebooks/{id}/sources/upload` | Upload PDF/image |
+| `POST` | `/api/notebooks/{id}/sources/upload` | Upload PDF/DOCX/TXT/MD/image |
 | `POST` | `/api/notebooks/{id}/sources/url` | Thêm URL |
 | `GET` | `/api/notebooks/{id}/sources` | Danh sách sources |
 | `DELETE` | `/api/notebooks/{id}/sources/{sid}` | Xóa source |
 | `GET` | `/api/notebooks/{id}/sources/{sid}/file` | Preview/download file |
+| `GET` | `/api/notebooks/{id}/sources/{sid}/summary` | Tóm tắt AI 3 tầng (`TL;DR`, `key_points`, `summary_detailed`) |
 | `POST` | `/api/notebooks/{id}/chat` | Chat RAG (SSE stream) |
 | `GET` | `/api/notebooks/{id}/chat` | Lịch sử chat |
 | `GET` | `/api/notebooks/{id}/graph` | Knowledge Graph data |
+| `POST` | `/api/notebooks/{id}/quiz` | Sinh bộ câu hỏi Trắc nghiệm AI từ Sổ tay |
+| `POST` | `/api/battle/rooms` | Tạo phòng Đấu trí Live (mã PIN 6 số) |
+| `POST` | `/api/battle/rooms/{code}/join` | Tham gia phòng Đấu trí Live |
+| `POST` | `/api/groups` | Tạo Nhóm học tập (`VKUxxx`) |
+| `POST` | `/api/groups/{code}/resources` | Chia sẻ học liệu Zero-Token vào Nhóm |
 | `GET` | `/api/health` | Health check |
 
 ---
