@@ -27,6 +27,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem('user', JSON.stringify(userData))
   }, [])
 
+  const updateUser = useCallback((userData) => {
+    setUser(userData)
+    localStorage.setItem('user', JSON.stringify(userData))
+  }, [])
+
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
@@ -60,7 +65,7 @@ export function AuthProvider({ children }) {
   }, [token, logout])
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout, authFetch, apiUrl: API_URL }}>
+    <AuthContext.Provider value={{ user, token, loading, login, updateUser, logout, authFetch, apiUrl: API_URL }}>
       {children}
     </AuthContext.Provider>
   )

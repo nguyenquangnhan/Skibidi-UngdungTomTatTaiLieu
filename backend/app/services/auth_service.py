@@ -131,3 +131,87 @@ async def google_auth(db: AsyncSession, id_token: str) -> User:
     await db.commit()
     await db.refresh(user)
     return user
+
+
+async def update_user_profile(
+    db: AsyncSession,
+    user: User,
+    full_name: str | None = None,
+    avatar_url: str | None = None,
+) -> User:
+    if full_name is not None:
+        cleaned_name = full_name.strip()
+        if not cleaned_name:
+            raise ValueError("Họ và tên không được để trống")
+        user.full_name = cleaned_name
+    if avatar_url is not None:
+        user.avatar_url = avatar_url.strip() or None
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_user_password(
+    db: AsyncSession,
+    user: User,
+    current_password: str | None,
+    new_password: str,
+) -> None:
+    if len(new_password.strip()) < 6:
+        raise ValueError("Mật khẩu mới phải có ít nhất 6 ký tự")
+    if user.hashed_password:
+        if not current_password:
+            raise ValueError("Vui lòng nhập mật khẩu hiện tại")
+        if not verify_password(current_password, user.hashed_password):
+            raise ValueError("Mật khẩu hiện tại không chính xác")
+    user.hashed_password = hash_password(new_password.strip())
+    await db.commit()
+
+
+async def get_user_stats(db: AsyncSession, user: User) -> dict:
+    from sqlalchemy import func
+    from app.models.notebook import Notebook, Source, ChatMessage, ProcessingStatus
+
+    nb_res = await db.execute(
+        select(func.count(Notebook.id)).where(Notebook.user_id == user.id)
+    )
+    notebook_count = int(nb_res.scalar() or 0)
+
+    src_res = await db.execute(
+        select(
+            func.count(Source.id),
+            func.coalesce(func.sum(Source.chunk_count), 0),
+        )
+        .join(Notebook, Source.notebook_id == Notebook.id)
+        .where(Notebook.user_id == user.id)
+    )
+    src_row = src_res.one()
+    source_count = int(src_row[0] or 0)
+    total_chunks = int(src_row[1] or 0)
+
+    comp_res = await db.execute(
+        select(func.count(Source.id))
+        .join(Notebook, Source.notebook_id == Notebook.id)
+        .where(
+            Notebook.user_id == user.id,
+            Source.status == ProcessingStatus.completed,
+        )
+    )
+    completed_source_count = int(comp_res.scalar() or 0)
+
+    msg_res = await db.execute(
+        select(func.count(ChatMessage.id))
+        .join(Notebook, ChatMessage.notebook_id == Notebook.id)
+        .where(Notebook.user_id == user.id)
+    )
+    chat_message_count = int(msg_res.scalar() or 0)
+
+    return {
+        "notebook_count": notebook_count,
+        "source_count": source_count,
+        "completed_source_count": completed_source_count,
+        "total_chunks": total_chunks,
+        "chat_message_count": chat_message_count,
+        "has_password": bool(user.hashed_password),
+    }
+

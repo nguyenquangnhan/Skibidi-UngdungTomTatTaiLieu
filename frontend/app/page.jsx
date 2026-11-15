@@ -12,6 +12,7 @@ import ChatInterface from '@/components/ChatInterface'
 import DocumentList from '@/components/DocumentList'
 import DocumentUpload from '@/components/DocumentUpload'
 import KnowledgeGraph from '@/components/KnowledgeGraph'
+import ProfileModal from '@/components/ProfileModal'
 import QuizPanel from '@/components/QuizPanel'
 import SourceViewer from '@/components/SourceViewer'
 import StudyGroups from '@/components/StudyGroups'
@@ -20,14 +21,23 @@ import LoadingSpinner from '@/components/LoadingSpinner'
 export default function HomePage() {
   const { user, loading, logout, authFetch } = useAuth()
 
-  // Auth
+  // Auth & Profile
   const [showAuthModal, setShowAuthModal] = useState(false)
+  const [showProfileModal, setShowProfileModal] = useState(false)
 
   // Navigation
   const [view, setView] = useState('home') // 'home' | 'notebook'
   const [activeTab, setActiveTab] = useState('chat') // 'chat' | 'graph' | 'sources'
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sourcesPanelOpen, setSourcesPanelOpen] = useState(true)
+
+  // Auto-collapse drawers on mobile viewports for intuitive mobile UX
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+      setSourcesPanelOpen(false)
+    }
+  }, [])
 
   // Data
   const [notebooks, setNotebooks] = useState([])
@@ -87,6 +97,10 @@ export default function HomePage() {
     setActiveTab('chat')
     setSources([])
     loadSources(notebook.id)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+      setSourcesPanelOpen(false)
+    }
   }, [loadSources])
 
   const createNotebook = useCallback(async (e) => {
@@ -305,11 +319,21 @@ export default function HomePage() {
   // MAIN APP VIEW (KHI ĐÃ ĐĂNG NHẬP)
   // ─────────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen overflow-hidden bg-[#090a0f] text-slate-200">
-      {/* Primary Sidebar */}
+    <div className="flex h-[100dvh] overflow-hidden bg-[#090a0f] text-slate-200 relative">
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/65 backdrop-blur-xs z-40 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Primary Sidebar (Fixed Drawer on Mobile, Static on Desktop) */}
       <aside
-        className={`flex flex-col border-r border-white/[0.08] bg-[#10131c] transition-all duration-300 z-30 ${
-          sidebarOpen ? 'w-64' : 'w-0 overflow-hidden'
+        className={`fixed md:static inset-y-0 left-0 flex flex-col border-r border-white/[0.08] bg-[#10131c] transition-all duration-300 z-50 md:z-30 ${
+          sidebarOpen
+            ? 'w-72 md:w-64 translate-x-0'
+            : '-translate-x-full w-72 md:translate-x-0 md:w-0 overflow-hidden'
         }`}
       >
         {/* Sidebar Brand Header */}
@@ -415,17 +439,30 @@ export default function HomePage() {
 
         {/* User Profile Footer */}
         <div className="p-3 border-t border-white/[0.08] bg-[#0c0e15] space-y-2.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex-shrink-0">
-              <User size={14} />
-            </div>
+          <button
+            type="button"
+            onClick={() => setShowProfileModal(true)}
+            className="w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-white/[0.05] transition-colors text-left"
+            title="Mở Quản lý tài khoản"
+          >
+            {user.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={user.full_name || user.email}
+                className="w-8 h-8 rounded-xl object-cover border border-indigo-500/30 flex-shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex-shrink-0">
+                <User size={14} />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-white truncate">
                 {user.full_name || user.email}
               </p>
-              <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+              <p className="text-[11px] text-indigo-400 truncate">Quản lý tài khoản →</p>
             </div>
-          </div>
+          </button>
           <button
             id="logout-btn"
             onClick={() => {
@@ -446,44 +483,42 @@ export default function HomePage() {
       {/* Main Workspace Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#090a0f]">
         {/* Top Header */}
-        <header className="h-14 border-b border-white/[0.08] bg-[#10131c]/80 backdrop-blur-xl px-4 flex items-center justify-between gap-3 flex-shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            {!sidebarOpen && (
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="btn-ghost p-2 rounded-lg text-slate-300 hover:text-white"
-                title="Mở thanh bên"
-              >
-                <Menu size={16} />
-              </button>
-            )}
+        <header className="h-14 border-b border-white/[0.08] bg-[#10131c]/80 backdrop-blur-xl px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-3 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={() => setSidebarOpen(prev => !prev)}
+              className={`btn-ghost p-2 rounded-lg text-slate-300 hover:text-white ${sidebarOpen ? 'md:hidden' : ''}`}
+              title="Mở danh sách sổ tay"
+            >
+              <Menu size={18} />
+            </button>
 
             {view === 'notebook' && selectedNotebook ? (
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                 <button
                   onClick={() => setView('home')}
-                  className="btn-ghost p-1.5 rounded-lg text-slate-400 hover:text-white flex items-center gap-1 text-xs"
+                  className="btn-ghost p-1.5 rounded-lg text-slate-400 hover:text-white flex items-center gap-1 text-xs flex-shrink-0"
                 >
                   <ChevronLeft size={16} />
-                  <span>Tất cả</span>
+                  <span className="hidden xs:inline">Tất cả</span>
                 </button>
-                <span className="text-slate-400">/</span>
-                <h2 className="font-semibold text-sm text-white truncate max-w-xs md:max-w-md">
+                <span className="text-slate-500">/</span>
+                <h2 className="font-semibold text-xs sm:text-sm text-white truncate max-w-[140px] sm:max-w-xs md:max-w-md">
                   {selectedNotebook.title}
                 </h2>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                <span className="hidden sm:inline-flex text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex-shrink-0">
                   {sources.length} tài liệu
                 </span>
               </div>
             ) : (
-              <h2 className="font-semibold text-sm text-white">Bảng điều khiển Notebooks</h2>
+              <h2 className="font-semibold text-xs sm:text-sm text-white truncate">Bảng điều khiển Notebooks</h2>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Tab Switcher (When in Notebook View) */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            {/* Desktop Tab Switcher (Hidden on Mobile, replaced by Bottom Nav Bar on Mobile) */}
             {view === 'notebook' && selectedNotebook && (
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181c28] border border-white/[0.08]">
+              <div className="hidden lg:flex items-center gap-1.5 p-1 rounded-xl bg-[#181c28] border border-white/[0.08]">
                 {[
                   { key: 'chat', label: 'Hội thoại RAG', icon: MessageSquare },
                   { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
@@ -503,20 +538,26 @@ export default function HomePage() {
                     }`}
                   >
                     <Icon size={13} />
-                    <span className="hidden sm:inline">{label}</span>
+                    <span>{label}</span>
                   </button>
                 ))}
               </div>
             )}
 
-            {/* User Pill & Logout Button in Top Header */}
-            <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
-              <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+            {/* User Pill (Opens Account Modal) & Logout Button in Top Header */}
+            <div className="flex items-center gap-1.5 sm:gap-2 pl-2 border-l border-white/[0.08]">
+              <button
+                id="user-profile-btn"
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-indigo-500/15 border border-white/[0.08] hover:border-indigo-500/30 transition-all"
+                title="Quản lý tài khoản"
+              >
                 <User size={13} className="text-indigo-400" />
-                <span className="text-xs font-medium text-slate-200 max-w-[140px] truncate">
+                <span className="text-xs font-medium text-slate-200 max-w-[90px] sm:max-w-[140px] truncate">
                   {user.full_name || user.email}
                 </span>
-              </div>
+              </button>
               <button
                 id="header-logout-btn"
                 onClick={() => {
@@ -525,11 +566,11 @@ export default function HomePage() {
                   setNotebooks([])
                   logout()
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
                 title="Đăng xuất"
               >
                 <LogOut size={13} />
-                <span>Đăng xuất</span>
+                <span className="hidden sm:inline">Đăng xuất</span>
               </button>
             </div>
           </div>
@@ -623,10 +664,18 @@ export default function HomePage() {
             </div>
           ) : (
             /* Notebook Open View: Split Layout */
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden relative">
+              {/* Mobile Backdrop for Sources Drawer */}
+              {activeTab === 'chat' && sourcesPanelOpen && (
+                <div
+                  className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 lg:hidden"
+                  onClick={() => setSourcesPanelOpen(false)}
+                />
+              )}
+
               {/* Collapsible Left Sources Drawer (In Chat Mode) */}
               {activeTab === 'chat' && sourcesPanelOpen && (
-                <div className="w-80 border-r border-white/[0.08] bg-[#0c0e15] flex flex-col overflow-hidden flex-shrink-0">
+                <div className="fixed lg:static inset-y-0 left-0 z-40 w-[86vw] max-w-sm lg:w-80 border-r border-white/[0.08] bg-[#0c0e15] flex flex-col overflow-hidden flex-shrink-0 shadow-2xl lg:shadow-none">
                   <div className="p-3.5 border-b border-white/[0.08] flex items-center justify-between">
                     <span className="text-xs font-bold text-white flex items-center gap-1.5">
                       <FileText size={14} className="text-indigo-400" />
@@ -634,10 +683,10 @@ export default function HomePage() {
                     </span>
                     <button
                       onClick={() => setSourcesPanelOpen(false)}
-                      className="text-slate-400 hover:text-white p-1 rounded-lg"
+                      className="text-slate-400 hover:text-white p-1.5 rounded-lg"
                       title="Thu gọn cột nguồn"
                     >
-                      <X size={14} />
+                      <X size={15} />
                     </button>
                   </div>
 
@@ -659,7 +708,12 @@ export default function HomePage() {
                         notebookId={selectedNotebook.id}
                         sources={sources}
                         onSourceDeleted={(id) => setSources(prev => prev.filter(s => s.id !== id))}
-                        onSourceClick={(source) => setSelectedSource(source)}
+                        onSourceClick={(source) => {
+                          setSelectedSource(source)
+                          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                            setSourcesPanelOpen(false)
+                          }
+                        }}
                         onRefresh={() => loadSources(selectedNotebook.id)}
                       />
                     </div>
@@ -718,7 +772,7 @@ export default function HomePage() {
                 )}
 
                 {activeTab === 'sources' && (
-                  <div className="flex-1 overflow-y-auto p-6 md:p-8 max-w-4xl mx-auto w-full space-y-6 scrollbar-thin">
+                  <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 max-w-4xl mx-auto w-full space-y-6 scrollbar-thin">
                     <div>
                       <h2 className="text-lg font-bold text-white mb-1">Quản lý nguồn tài liệu</h2>
                       <p className="text-xs text-slate-400">Tải lên tài liệu PDF, hình ảnh scan hoặc nhập liên kết web để AI xử lý.</p>
@@ -754,11 +808,52 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Mobile Bottom Navigation Bar (Visible on Mobile/Tablet when inside a Notebook) */}
+        {view === 'notebook' && selectedNotebook && (
+          <nav className="lg:hidden border-t border-white/[0.08] bg-[#10131c]/95 backdrop-blur-xl px-1 py-1.5 grid grid-cols-6 gap-1 flex-shrink-0 z-20">
+            {[
+              { key: 'chat', label: 'Hỏi đáp', icon: MessageSquare },
+              { key: 'graph', label: 'Đồ thị', icon: Network },
+              { key: 'quiz', label: 'Trắc nghiệm', icon: HelpCircle },
+              { key: 'battle', label: 'Đấu trí', icon: Swords },
+              { key: 'groups', label: 'Nhóm', icon: Users },
+              { key: 'sources', label: 'Tài liệu', icon: FileText },
+            ].map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`flex flex-col items-center justify-center gap-1 py-1.5 px-1 rounded-xl transition-all ${
+                  activeTab === key
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Icon size={16} />
+                <span className="text-[10px] leading-none truncate max-w-full">{label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
       </main>
 
       {/* Source Viewer Modal */}
       {selectedSource && (
         <SourceViewer source={selectedSource} onClose={() => setSelectedSource(null)} />
+      )}
+
+      {/* Account Management Modal */}
+      {showProfileModal && (
+        <ProfileModal
+          onClose={() => setShowProfileModal(false)}
+          onLogout={() => {
+            setShowProfileModal(false)
+            setView('home')
+            setSelectedNotebook(null)
+            setNotebooks([])
+            logout()
+          }}
+        />
       )}
     </div>
   )

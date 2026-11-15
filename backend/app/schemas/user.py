@@ -31,3 +31,23 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: str | None = None
+    avatar_url: str | None = None
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str | None = None
+    new_password: str
+
+
+class UserStatsResponse(BaseModel):
+    notebook_count: int = 0
+    source_count: int = 0
+    completed_source_count: int = 0
+    total_chunks: int = 0
+    chat_message_count: int = 0
+    has_password: bool = True
+

@@ -3,7 +3,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 
 from app.database import get_db
-from app.schemas.user import UserRegister, UserLogin, GoogleAuthRequest, TokenResponse, UserResponse
+from app.schemas.user import (
+    UserRegister,
+    UserLogin,
+    GoogleAuthRequest,
+    TokenResponse,
+    UserResponse,
+    UserProfileUpdate,
+    PasswordChangeRequest,
+    UserStatsResponse,
+)
 from app.services import auth_service
 from app.config import get_settings
 
@@ -63,3 +72,43 @@ async def google_login(body: GoogleAuthRequest, db: AsyncSession = Depends(get_d
 @router.get("/me", response_model=UserResponse)
 async def me(current_user=Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UserProfileUpdate,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        updated = await auth_service.update_user_profile(
+            db, current_user, full_name=body.full_name, avatar_url=body.avatar_url
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return UserResponse.model_validate(updated)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: PasswordChangeRequest,
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await auth_service.change_user_password(
+            db, current_user, body.current_password, body.new_password
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"message": "Đổi mật khẩu thành công"}
+
+
+@router.get("/stats", response_model=UserStatsResponse)
+async def user_stats(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    stats = await auth_service.get_user_stats(db, current_user)
+    return UserStatsResponse(**stats)
+

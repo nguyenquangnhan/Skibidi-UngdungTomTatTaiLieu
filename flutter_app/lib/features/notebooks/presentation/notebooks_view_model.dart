@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'package:signals/signals.dart';
 
+import '../../auth/domain/models/auth_user.dart';
 import '../../auth/presentation/auth_view_model.dart';
 import '../domain/models/notebook.dart';
 import '../data/sources/notebook_api.dart';
@@ -19,6 +20,7 @@ final class NotebooksViewModel {
   ReadonlySignal<AsyncState<List<Notebook>>?> get notebooks => _notebooks;
   ReadonlySignal<bool> get isCreating => _isCreating;
   ReadonlySignal<Set<String>> get isDeleting => _isDeleting;
+  ReadonlySignal<AuthUser?> get currentUser => _authViewModel.currentUser;
 
   Future<void> loadNotebooks() async {
     if (_notebooks.value is AsyncLoading<List<Notebook>>) return;

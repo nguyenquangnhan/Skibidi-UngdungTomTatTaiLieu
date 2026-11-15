@@ -106,6 +106,96 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
     }
   }
 
+  Future<void> _showAccountSheet() async {
+    final user = widget.viewModel.currentUser.value;
+    final state = widget.viewModel.notebooks.value;
+    final nbCount = state is AsyncData<List<Notebook>> ? state.value.length : 0;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    child: Text(
+                      (user?.fullName ?? user?.email ?? 'U')
+                          .trim()
+                          .substring(0, 1)
+                          .toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user?.fullName ?? 'Người dùng Skibidi',
+                          style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          user?.email ?? '',
+                          style: Theme.of(ctx).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Theme.of(ctx).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Tổng số Sổ tay nghiên cứu'),
+                    Text(
+                      '$nbCount',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.error,
+                    foregroundColor: Theme.of(ctx).colorScheme.onError,
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await widget.viewModel.logout();
+                    if (mounted) context.go('/login');
+                  },
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Đăng xuất tài khoản'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,6 +207,11 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
             icon: const Icon(Icons.refresh_rounded),
             onPressed: widget.viewModel.loadNotebooks,
             tooltip: 'Làm mới',
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: _showAccountSheet,
+            tooltip: 'Quản lý tài khoản',
           ),
           TextButton.icon(
             onPressed: () async {

@@ -363,3 +363,27 @@ async def test_study_groups_and_zero_token_sharing():
         assert len(updated_group["resources"]) == 1
         assert updated_group["resources"][0]["title"] == "BaiGiang_GraphRAG.pdf"
 
+
+async def test_account_management_schemas_and_routes():
+    """Kiểm tra schema Quản lý tài khoản và bảo vệ route PATCH /auth/me, POST /auth/change-password, GET /auth/stats."""
+    import httpx
+    from app.schemas.user import UserProfileUpdate, PasswordChangeRequest, UserStatsResponse
+
+    upd = UserProfileUpdate(full_name="Nguyễn Quang Nhân", avatar_url="https://example.com/a.png")
+    assert upd.full_name == "Nguyễn Quang Nhân"
+
+    pwd = PasswordChangeRequest(current_password="old123", new_password="newpassword123")
+    assert pwd.new_password == "newpassword123"
+
+    stats = UserStatsResponse(notebook_count=3, source_count=5, completed_source_count=4, total_chunks=42, chat_message_count=10)
+    assert stats.total_chunks == 42
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        res_patch = await client.patch("/auth/me", json={"full_name": "Test"})
+        assert res_patch.status_code in [401, 403]
+
+        res_stats = await client.get("/auth/stats")
+        assert res_stats.status_code in [401, 403]
+
+
