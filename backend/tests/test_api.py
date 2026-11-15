@@ -248,3 +248,118 @@ async def test_unauthorized_access_to_protected_routes():
         response = await client.get("/api/notebooks")
         # Phải bị chặn do thiếu Authorization Bearer header
         assert response.status_code in [401, 403]
+
+
+# ==============================================================================
+# 8. Phase 1-4 Features: Quiz Generator, Live Battle & Study Groups
+# ==============================================================================
+def test_quiz_fallback_generator():
+    """Kiểm tra bộ sinh câu hỏi trắc nghiệm dự phòng (Phase 2)."""
+    from app.services.quiz_service import _build_fallback_quiz
+
+    items = _build_fallback_quiz(
+        notebook_title="Kiến trúc GraphRAG",
+        chunks=["[Trang 1]\nGraphRAG kết hợp truy xuất vector pgvector và đồ thị tri thức Neo4j."],
+        nodes=[{"id": "GraphRAG", "label": "GraphRAG"}, {"id": "Neo4j", "label": "Neo4j"}],
+        num_questions=5,
+    )
+    assert len(items) == 5
+    assert items[0]["correct_option"] in ["A", "B", "C", "D"]
+    assert "question" in items[0]
+
+
+async def test_battle_room_lifecycle():
+    """Kiểm tra tạo phòng, tham gia bằng mã PIN 6 số và bắt đầu trận đấu (Phase 3)."""
+    import httpx
+    from app.database import get_db
+
+    async def _override_get_db():
+        yield None
+
+    app.dependency_overrides[get_db] = _override_get_db
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            create_res = await client.post(
+                "/api/battle/rooms",
+                json={
+                    "host_id": "host-1",
+                    "host_name": "Host Tester",
+                    "notebook_id": "nb-test-1",
+                    "notebook_title": "Notebook Ôn Tập",
+                    "num_questions": 5,
+                },
+            )
+            assert create_res.status_code == 200
+            room_data = create_res.json()
+            code = room_data["room_code"]
+            assert len(code) == 6
+            assert room_data["status"] == "waiting"
+
+            join_res = await client.post(
+                f"/api/battle/rooms/{code}/join",
+                json={"user_id": "player-2", "user_name": "Player Two"},
+            )
+            assert join_res.status_code == 200
+            assert len(join_res.json()["players"]) == 2
+
+            start_res = await client.post(
+                f"/api/battle/rooms/{code}/start",
+                json={"user_id": "host-1"},
+            )
+            assert start_res.status_code == 200
+            assert start_res.json()["status"] in ["countdown", "question", "playing"]
+    finally:
+        app.dependency_overrides.pop(get_db, None)
+
+
+async def test_study_groups_and_zero_token_sharing():
+    """Kiểm tra tạo nhóm học tập, tham gia nhóm bằng mã PIN và chia sẻ học liệu Zero-Token (Phase 4)."""
+    import httpx
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        create_res = await client.post(
+            "/api/groups",
+            json={
+                "name": "Nhóm Nghiên cứu AI",
+                "host_id": "user-1",
+                "host_name": "Trưởng Nhóm",
+                "host_email": "leader@skibidi.ai",
+                "is_private": True,
+            },
+        )
+        assert create_res.status_code == 200
+        group = create_res.json()
+        code = group["code"]
+        assert code.startswith("VKU")
+
+        join_res = await client.post(
+            "/api/groups/join",
+            json={
+                "code": code,
+                "user_id": "user-2",
+                "user_name": "Thành Viên 2",
+                "user_email": "member2@skibidi.ai",
+            },
+        )
+        assert join_res.status_code == 200
+        assert len(join_res.json()["members"]) == 2
+
+        share_res = await client.post(
+            f"/api/groups/{code}/resources",
+            json={
+                "id": "src-shared-1",
+                "title": "BaiGiang_GraphRAG.pdf",
+                "file_type": "PDF",
+                "num_pages": 15,
+                "uploaded_by": "Trưởng Nhóm",
+                "summary_tldr": "Tóm tắt TL;DR tiết kiệm 100% token cho thành viên.",
+                "summary_detailed": "Nội dung phân tích chuyên sâu có trích dẫn [Trang 1].",
+            },
+        )
+        assert share_res.status_code == 200
+        updated_group = share_res.json()
+        assert len(updated_group["resources"]) == 1
+        assert updated_group["resources"][0]["title"] == "BaiGiang_GraphRAG.pdf"
+

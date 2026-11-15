@@ -277,6 +277,87 @@ paths:
       responses:
         "200":
           description: Graph payload containing `nodes` and `links`
+  /api/notebooks/{notebook_id}/sources/{source_id}/summary:
+    get:
+      tags: [Sources]
+      summary: Multi-layer AI summary (TL;DR, Key Points, Detailed Markdown with [Trang N] citations)
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+        - $ref: "#/components/parameters/SourceId"
+      responses:
+        "200":
+          description: Multi-layer document summary
+  /api/notebooks/{notebook_id}/quiz:
+    post:
+      tags: [Quiz]
+      summary: Generate or fetch AI multiple-choice quiz questions for a notebook
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: Quiz questions with A/B/C/D options, correct answer, and explanation
+  /api/battle/rooms:
+    post:
+      tags: [Battle]
+      summary: Create a synchronized live quiz battle room with a 6-digit PIN code
+      responses:
+        "200":
+          description: Room state with code, players, and timer synchronization
+  /api/battle/rooms/{room_code}/join:
+    post:
+      tags: [Battle]
+      summary: Join an active quiz battle room by 6-digit PIN code
+      responses:
+        "200":
+          description: Updated room state
+  /api/battle/rooms/{room_code}:
+    get:
+      tags: [Battle]
+      summary: Poll live battle room state, server clock phase, and leaderboard
+      responses:
+        "200":
+          description: Synchronized room state
+  /api/battle/rooms/{room_code}/start:
+    post:
+      tags: [Battle]
+      summary: Start the live quiz battle (Host only)
+      responses:
+        "200":
+          description: Started room state
+  /api/battle/rooms/{room_code}/answer:
+    post:
+      tags: [Battle]
+      summary: Submit answer and compute speed-bonus score (500 to 1000 points)
+      responses:
+        "200":
+          description: Updated room and player score
+  /api/groups:
+    get:
+      tags: [Study Groups]
+      summary: List study groups for a user
+      responses:
+        "200":
+          description: List of study groups
+    post:
+      tags: [Study Groups]
+      summary: Create a new study group with 6-character PIN code (VKUxxx)
+      responses:
+        "200":
+          description: Created study group
+  /api/groups/join:
+    post:
+      tags: [Study Groups]
+      summary: Join a study group via 6-character PIN code
+      responses:
+        "200":
+          description: Joined study group state
+  /api/groups/{code}/resources:
+    post:
+      tags: [Study Groups]
+      summary: Share an AI-summarized document with the group (Zero-Token sharing)
+      responses:
+        "200":
+          description: Updated group with shared resource
 components:
   securitySchemes:
     BearerAuth:

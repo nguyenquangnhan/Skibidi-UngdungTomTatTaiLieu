@@ -138,6 +138,9 @@ test.describe('Skibidi Web App - E2E UI Tests', () => {
     await notebookItem.click();
 
     await expect(page.getByText('graphrag_paper.pdf').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Trắc nghiệm AI').first()).toBeVisible();
+    await expect(page.getByText('Đấu trí Live').first()).toBeVisible();
+    await expect(page.getByText('Nhóm học tập').first()).toBeVisible();
   });
 
   test('TC-04: Giao diện dark-mode và responsive layout', async ({ page }) => {
