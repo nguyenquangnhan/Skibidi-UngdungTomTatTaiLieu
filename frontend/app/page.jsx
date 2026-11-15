@@ -3,10 +3,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   BookOpen, Plus, Trash2, LogOut, User, MessageSquare,
   FileText, Network, ChevronLeft, Sparkles, Menu, X,
-  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2, HelpCircle
+  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2, HelpCircle, Swords
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/AuthModal'
+import BattleArena from '@/components/BattleArena'
 import ChatInterface from '@/components/ChatInterface'
 import DocumentList from '@/components/DocumentList'
 import DocumentUpload from '@/components/DocumentUpload'
@@ -479,6 +480,7 @@ export default function HomePage() {
                 { key: 'chat', label: 'Hội thoại RAG', icon: MessageSquare },
                 { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
                 { key: 'quiz', label: 'Trắc nghiệm AI', icon: HelpCircle },
+                { key: 'battle', label: 'Đấu trí Live', icon: Swords },
                 { key: 'sources', label: 'Quản lý tài liệu', icon: FileText },
               ].map(({ key, label, icon: Icon }) => (
                 <button
@@ -663,6 +665,13 @@ export default function HomePage() {
                     notebookId={selectedNotebook.id}
                     notebookTitle={selectedNotebook.title}
                     hasCompletedSources={sources.some(s => s.status === 'completed')}
+                  />
+                )}
+
+                {activeTab === 'battle' && (
+                  <BattleArena
+                    notebookId={selectedNotebook.id}
+                    notebookTitle={selectedNotebook.title}
                   />
                 )}
 
