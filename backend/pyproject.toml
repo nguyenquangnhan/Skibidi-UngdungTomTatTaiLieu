@@ -2,8 +2,7 @@
 name = "skibidi-rag"
 version = "0.2.0"
 description = "Skibidi — Ứng dụng tóm tắt & hỏi đáp tài liệu thông minh với GraphRAG + PP-OCRv6"
-readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 
 dependencies = [
     # Framework & API
@@ -27,6 +26,8 @@ dependencies = [
     # PP-OCRv6: +4.6% detection, +5.1% recognition vs PP-OCRv5
     # 5.2x CPU speedup, 50 languages unified model
     # Source: https://github.com/PaddlePaddle/PaddleOCR
+    "pypdf>=4.0",
+    "python-docx>=1.1",
     "pymupdf>=1.24",
     "paddleocr>=2.9",       # PP-OCRv6 requires >= 2.9
     "paddlepaddle>=2.6",
@@ -63,6 +64,9 @@ eval = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
