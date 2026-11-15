@@ -30,6 +30,9 @@ def _is_within_directory(path: Path, root: Path) -> bool:
 
 ALLOWED_EXTENSIONS = {
     "pdf": SourceType.pdf,
+    "docx": SourceType.pdf,
+    "txt": SourceType.pdf,
+    "md": SourceType.pdf,
     "png": SourceType.image,
     "jpg": SourceType.image,
     "jpeg": SourceType.image,
@@ -38,6 +41,8 @@ ALLOWED_EXTENSIONS = {
     "bmp": SourceType.image,
     "tiff": SourceType.image,
 }
+
+_SUMMARY_CACHE: dict[str, dict] = {}
 
 
 @router.get("", response_model=list[SourceResponse])
@@ -149,3 +154,44 @@ async def get_file(
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File không tìm thấy trên server")
     return FileResponse(file_path, filename=source.title)
+
+
+@router.get("/{source_id}/summary")
+async def get_source_summary(
+    notebook_id: str,
+    source_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get or generate multi-layer summary (TL;DR + Key Points + Detailed) for a source."""
+    nb = await notebook_service.get_notebook(db, notebook_id, current_user.id)
+    if not nb:
+        raise HTTPException(status_code=404, detail="Notebook không tồn tại")
+    source = await notebook_service.get_source(db, source_id, notebook_id)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source không tồn tại")
+
+    if source_id in _SUMMARY_CACHE:
+        return _SUMMARY_CACHE[source_id]
+
+    from app.services import document_processor, neo4j_service
+
+    chunks = await neo4j_service.get_source_chunks(source_id, limit=10)
+    text = "\n\n".join(chunks)
+    if not text.strip() and source.file_path:
+        fp = Path(source.file_path).resolve()
+        if _is_within_directory(fp, UPLOAD_ROOT) and fp.exists():
+            try:
+                text = await document_processor.process_document(str(fp), source.source_type.value)
+            except Exception:
+                text = ""
+
+    summary_data = await document_processor.generate_source_summary(text, source.title)
+    payload = {
+        "source_id": source.id,
+        "title": source.title,
+        **summary_data,
+    }
+    _SUMMARY_CACHE[source_id] = payload
+    return payload
+

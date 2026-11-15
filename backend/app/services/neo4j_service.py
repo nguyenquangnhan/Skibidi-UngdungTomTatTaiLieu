@@ -236,3 +236,36 @@ async def delete_source_data(source_id: str):
             DETACH DELETE c
         """, source_id=source_id)
         await session.run("MATCH (s:Source {id: $source_id}) DETACH DELETE s", source_id=source_id)
+
+
+async def get_source_chunks(source_id: str, limit: int = 10) -> list[str]:
+    """Fetch ordered chunk texts for a specific source from Neo4j."""
+    try:
+        driver = get_neo4j_driver()
+        async with driver.session() as session:
+            result = await session.run("""
+                MATCH (c:Chunk)-[:PART_OF]->(s:Source {id: $source_id})
+                RETURN c.text AS text, c.chunk_index AS idx
+                ORDER BY idx ASC
+                LIMIT $limit
+            """, source_id=source_id, limit=limit)
+            return [r["text"] async for r in result if r.get("text")]
+    except Exception:
+        return []
+
+
+async def get_notebook_chunks(notebook_id: str, limit: int = 12) -> list[str]:
+    """Fetch chunk texts across all sources in a notebook from Neo4j."""
+    try:
+        driver = get_neo4j_driver()
+        async with driver.session() as session:
+            result = await session.run("""
+                MATCH (c:Chunk)-[:PART_OF]->(:Source)-[:BELONGS_TO]->(n:Notebook {id: $notebook_id})
+                RETURN c.text AS text, c.chunk_index AS idx
+                ORDER BY idx ASC
+                LIMIT $limit
+            """, notebook_id=notebook_id, limit=limit)
+            return [r["text"] async for r in result if r.get("text")]
+    except Exception:
+        return []
+

@@ -197,7 +197,11 @@ async def extract_text_from_pdf(file_path: str) -> str:
                 pages_text.append((page_num, ocr_text))
 
     pages_text.sort(key=lambda x: x[0])
-    return "\n\n".join(text for _, text in pages_text if text.strip())
+    return "\n\n".join(
+        f"[Trang {page_idx + 1}]\n{text.strip()}"
+        for page_idx, text in pages_text
+        if text and text.strip()
+    )
 
 
 async def extract_text_from_image(file_path: str) -> str:
@@ -261,14 +265,101 @@ async def extract_text_from_url(url: str) -> tuple[str, str]:
     return title, "\n".join(lines)
 
 
+async def extract_text_from_docx(file_path: str) -> str:
+    """Extract text and tables from a DOCX file with page markers."""
+    import docx
+
+    doc_file = docx.Document(file_path)
+    blocks = [p.text.strip() for p in doc_file.paragraphs if p.text and p.text.strip()]
+    for table in doc_file.tables:
+        for row in table.rows:
+            row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+            if row_text:
+                blocks.append(row_text)
+    paged = []
+    for idx, para in enumerate(blocks):
+        page_no = (idx // 8) + 1
+        paged.append(f"[Trang {page_no}]\n{para}")
+    return "\n\n".join(paged)
+
+
+async def extract_text_from_txt(file_path: str) -> str:
+    """Extract text from plain text / markdown file."""
+    raw = Path(file_path).read_bytes()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1", errors="ignore")
+    return f"[Trang 1]\n{text.strip()}" if text.strip() else ""
+
+
 async def process_document(file_path: str, source_type: str) -> str:
-    """Main entry point: extract text based on source type."""
-    if source_type == "pdf":
+    """Main entry point: extract text based on file extension or source type."""
+    ext = Path(file_path).suffix.lower().lstrip(".")
+    if ext == "docx":
+        return await extract_text_from_docx(file_path)
+    if ext in ("txt", "md"):
+        return await extract_text_from_txt(file_path)
+    if source_type == "pdf" or ext == "pdf":
         return await extract_text_from_pdf(file_path)
     elif source_type == "image":
-        return await extract_text_from_image(file_path)
+        text = await extract_text_from_image(file_path)
+        return f"[Trang 1]\n{text.strip()}" if text and text.strip() else ""
     else:
         raise ValueError(f"Unsupported source type for file: {source_type}")
+
+
+def _generate_summary_sync(text: str, title: str) -> dict:
+    """Generate multi-layer summary (TL;DR + Key Points + Detailed) via Gemini with fallback."""
+    import json
+    import re
+
+    snippet = text[:12000].strip()
+    if snippet:
+        prompt = (
+            f"Bạn là trợ lý học thuật AI. Dựa trên nội dung tài liệu '{title}' dưới đây, "
+            "hãy tổng hợp bản tóm tắt đa tầng bằng tiếng Việt và trả về đúng JSON theo cấu trúc:\n"
+            "{\n"
+            '  "summary_tldr": "Tóm tắt tổng quan ngắn gọn 2-3 câu bao quát toàn bộ tài liệu",\n'
+            '  "key_points": ["Luận điểm cốt lõi 1 (kèm [Trang N] nếu có)", "Luận điểm cốt lõi 2", "Luận điểm cốt lõi 3"],\n'
+            '  "summary_detailed": "Bản tóm tắt chi tiết các phần quan trọng trong tài liệu"\n'
+            "}\n"
+            "Chỉ trả về JSON hợp lệ, không bọc trong markdown.\n\n"
+            f"NỘI DUNG TÀI LIỆU:\n{snippet}"
+        )
+        for client in get_gemini_clients():
+            try:
+                resp = client.models.generate_content(
+                    model=settings.chat_model,
+                    contents=prompt,
+                )
+                raw = (resp.text or "").strip()
+                raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+                parsed = json.loads(raw)
+                if isinstance(parsed, dict) and parsed.get("summary_tldr"):
+                    return {
+                        "summary_tldr": str(parsed.get("summary_tldr", "")),
+                        "key_points": list(parsed.get("key_points") or [])[:6],
+                        "summary_detailed": str(parsed.get("summary_detailed", "")),
+                    }
+            except Exception:
+                continue
+
+    # Context-grounded fallback from extracted text
+    lines = [ln.strip() for ln in snippet.splitlines() if ln.strip() and not ln.strip().startswith("[Trang")]
+    first_sentences = " ".join(lines[:4])[:360] if lines else f"Tài liệu '{title}' đã được trích xuất và lập chỉ mục GraphRAG."
+    key_pts = [ln[:180] for ln in lines[:4]] if lines else [f"Nội dung trọng tâm của {title}"]
+    return {
+        "summary_tldr": first_sentences,
+        "key_points": key_pts,
+        "summary_detailed": "\n".join(lines[:10])[:1000] if lines else first_sentences,
+    }
+
+
+async def generate_source_summary(text: str, title: str) -> dict:
+    """Async wrapper for multi-layer document summary generation."""
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _generate_summary_sync, text, title)
 
 
 def split_text_into_chunks(text: str, chunk_size: int = 1000, chunk_overlap: int = 200) -> list[str]:

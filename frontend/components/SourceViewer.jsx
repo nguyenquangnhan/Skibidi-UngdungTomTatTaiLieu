@@ -1,11 +1,38 @@
 'use client'
-import { X, ExternalLink, FileText, Globe, Image as ImageIcon } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, ExternalLink, FileText, Globe, Image as ImageIcon, Sparkles, CheckCircle2, Loader2 } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
 
 export default function SourceViewer({ source, onClose }) {
+  const { authFetch } = useAuth()
+  const [summary, setSummary] = useState(null)
+  const [loadingSummary, setLoadingSummary] = useState(false)
+
+  useEffect(() => {
+    if (!source?.id || !source?.notebook_id) return
+    let cancelled = false
+    setLoadingSummary(true)
+    setSummary(null)
+
+    authFetch(`/api/notebooks/${source.notebook_id}/sources/${source.id}/summary`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setSummary(data)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoadingSummary(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [source?.id, source?.notebook_id, authFetch])
+
   if (!source) return null
 
   const typeConfig = {
-    pdf: { icon: FileText, label: 'Tệp PDF', color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)' },
+    pdf: { icon: FileText, label: 'Tệp Tài liệu', color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)' },
     image: { icon: ImageIcon, label: 'Hình ảnh (OCR)', color: '#34d399', bg: 'rgba(52, 211, 153, 0.15)' },
     url: { icon: Globe, label: 'Trang Web', color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
   }
@@ -57,16 +84,47 @@ export default function SourceViewer({ source, onClose }) {
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-          {source.source_type === 'pdf' && source.file_path ? (
-            <div className="text-center py-10">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-indigo-500/10 border border-indigo-500/25 text-indigo-400">
-                <FileText size={32} />
+        <div className="flex-1 overflow-y-auto p-6 space-y-5 scrollbar-thin">
+          {/* Multi-layer AI Summary Section */}
+          <div className="rounded-xl bg-indigo-500/[0.07] border border-indigo-500/20 p-4 space-y-3">
+            <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+              <Sparkles size={14} />
+              <span>Tóm tắt Đa tầng (TL;DR & Điểm cốt lõi)</span>
+            </div>
+
+            {loadingSummary ? (
+              <div className="flex items-center gap-2 text-xs text-slate-400 py-3">
+                <Loader2 size={14} className="animate-spin text-indigo-400" />
+                <span>Đang tổng hợp bản tóm tắt đa tầng từ tài liệu...</span>
               </div>
-              <h4 className="text-sm font-bold text-white mb-2">{source.title}</h4>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto mb-6">
-                Tài liệu đã được trích xuất và chia nhỏ để phục vụ GraphRAG và trích xuất Knowledge Graph.
+            ) : summary ? (
+              <div className="space-y-3 text-xs text-slate-200 leading-relaxed">
+                <p className="text-slate-100 font-medium bg-white/[0.03] p-3 rounded-lg border border-white/[0.06]">
+                  {summary.summary_tldr}
+                </p>
+                {Array.isArray(summary.key_points) && summary.key_points.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold text-slate-400 uppercase">Luận điểm chính:</div>
+                    <ul className="space-y-1.5">
+                      {summary.key_points.map((pt, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-slate-300">
+                          <CheckCircle2 size={13} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                          <span>{pt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">
+                Tài liệu đã được trích xuất và chia nhỏ kèm đánh dấu [Trang N] để phục vụ GraphRAG.
               </p>
+            )}
+          </div>
+
+          {source.source_type === 'pdf' ? (
+            <div className="text-center py-4">
               <a
                 href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/notebooks/${source.notebook_id}/sources/${source.id}/file`}
                 target="_blank"
@@ -74,18 +132,11 @@ export default function SourceViewer({ source, onClose }) {
                 className="btn-primary inline-flex text-xs px-5 py-2.5"
               >
                 <ExternalLink size={14} />
-                <span>Xem tệp PDF gốc</span>
+                <span>Xem tệp gốc ({source.title})</span>
               </a>
             </div>
           ) : source.source_type === 'url' ? (
-            <div className="text-center py-10">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-sky-500/10 border border-sky-500/25 text-sky-400">
-                <Globe size={32} />
-              </div>
-              <h4 className="text-sm font-bold text-white mb-2">Liên kết Nguồn Web</h4>
-              <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
-                Nội dung đã được trích xuất bằng bộ parser tự động, loại bỏ quảng cáo và menu điều hướng.
-              </p>
+            <div className="text-center py-4">
               <a
                 href={source.url}
                 target="_blank"
@@ -96,11 +147,7 @@ export default function SourceViewer({ source, onClose }) {
                 <ExternalLink size={12} />
               </a>
             </div>
-          ) : (
-            <div className="text-center py-10">
-              <p className="text-xs text-slate-400">Không có bản xem trước trực tiếp cho định dạng này.</p>
-            </div>
-          )}
+          ) : null}
 
           {source.error_message && (
             <div className="mt-4 p-3.5 rounded-xl bg-red-500/10 border border-red-500/25 text-xs text-red-400">
