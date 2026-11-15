@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.database import init_db
 from app.services.neo4j_service import init_vector_index, close_neo4j_driver
 from app.services.notebook_service import resume_pending_sources
-from app.routers import auth, notebooks, sources, chat, graph, quiz, battle
+from app.routers import auth, notebooks, sources, chat, graph, quiz, battle, groups
 
 settings = get_settings()
 
@@ -49,6 +49,7 @@ app.include_router(chat.router)
 app.include_router(graph.router)
 app.include_router(quiz.router)
 app.include_router(battle.router)
+app.include_router(groups.router)
 
 
 @app.get("/", tags=["Root"])

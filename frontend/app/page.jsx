@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   BookOpen, Plus, Trash2, LogOut, User, MessageSquare,
   FileText, Network, ChevronLeft, Sparkles, Menu, X,
-  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2, HelpCircle, Swords
+  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2, HelpCircle, Swords, Users
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/AuthModal'
@@ -14,6 +14,7 @@ import DocumentUpload from '@/components/DocumentUpload'
 import KnowledgeGraph from '@/components/KnowledgeGraph'
 import QuizPanel from '@/components/QuizPanel'
 import SourceViewer from '@/components/SourceViewer'
+import StudyGroups from '@/components/StudyGroups'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
 export default function HomePage() {
@@ -481,6 +482,7 @@ export default function HomePage() {
                 { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
                 { key: 'quiz', label: 'Trắc nghiệm AI', icon: HelpCircle },
                 { key: 'battle', label: 'Đấu trí Live', icon: Swords },
+                { key: 'groups', label: 'Nhóm học tập', icon: Users },
                 { key: 'sources', label: 'Quản lý tài liệu', icon: FileText },
               ].map(({ key, label, icon: Icon }) => (
                 <button
@@ -672,6 +674,14 @@ export default function HomePage() {
                   <BattleArena
                     notebookId={selectedNotebook.id}
                     notebookTitle={selectedNotebook.title}
+                  />
+                )}
+
+                {activeTab === 'groups' && (
+                  <StudyGroups
+                    notebookId={selectedNotebook.id}
+                    notebookTitle={selectedNotebook.title}
+                    sources={sources}
                   />
                 )}
 
