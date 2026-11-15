@@ -118,25 +118,13 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
             onPressed: widget.viewModel.loadNotebooks,
             tooltip: 'Làm mới',
           ),
-          PopupMenuButton<String>(
-            onSelected: (val) async {
-              if (val == 'logout') {
-                await widget.viewModel.logout();
-                if (context.mounted) context.go('/login');
-              }
+          TextButton.icon(
+            onPressed: () async {
+              await widget.viewModel.logout();
+              if (context.mounted) context.go('/login');
             },
-            itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    Icon(Icons.logout),
-                    SizedBox(width: 8),
-                    Text('Đăng xuất'),
-                  ],
-                ),
-              ),
-            ],
+            icon: const Icon(Icons.logout_rounded, size: 18),
+            label: const Text('Đăng xuất'),
           ),
         ],
       ),

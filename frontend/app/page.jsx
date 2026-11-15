@@ -414,7 +414,7 @@ export default function HomePage() {
         </div>
 
         {/* User Profile Footer */}
-        <div className="p-3 border-t border-white/[0.08] bg-[#0c0e15]">
+        <div className="p-3 border-t border-white/[0.08] bg-[#0c0e15] space-y-2.5">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex-shrink-0">
               <User size={14} />
@@ -425,22 +425,28 @@ export default function HomePage() {
               </p>
               <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
             </div>
-            <button
-              id="logout-btn"
-              onClick={logout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 transition-colors"
-              title="Đăng xuất"
-            >
-              <LogOut size={14} />
-            </button>
           </div>
+          <button
+            id="logout-btn"
+            onClick={() => {
+              setView('home')
+              setSelectedNotebook(null)
+              setNotebooks([])
+              logout()
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
+            title="Đăng xuất tài khoản"
+          >
+            <LogOut size={14} />
+            <span>Đăng xuất</span>
+          </button>
         </div>
       </aside>
 
       {/* Main Workspace Area */}
       <main className="flex-1 flex flex-col min-w-0 bg-[#090a0f]">
         {/* Top Header */}
-        <header className="h-14 border-b border-white/[0.08] bg-[#10131c]/80 backdrop-blur-xl px-4 flex items-center justify-between flex-shrink-0">
+        <header className="h-14 border-b border-white/[0.08] bg-[#10131c]/80 backdrop-blur-xl px-4 flex items-center justify-between gap-3 flex-shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             {!sidebarOpen && (
               <button
@@ -474,33 +480,59 @@ export default function HomePage() {
             )}
           </div>
 
-          {/* Tab Switcher (When in Notebook View) */}
-          {view === 'notebook' && selectedNotebook && (
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181c28] border border-white/[0.08]">
-              {[
-                { key: 'chat', label: 'Hội thoại RAG', icon: MessageSquare },
-                { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
-                { key: 'quiz', label: 'Trắc nghiệm AI', icon: HelpCircle },
-                { key: 'battle', label: 'Đấu trí Live', icon: Swords },
-                { key: 'groups', label: 'Nhóm học tập', icon: Users },
-                { key: 'sources', label: 'Quản lý tài liệu', icon: FileText },
-              ].map(({ key, label, icon: Icon }) => (
-                <button
-                  key={key}
-                  id={`tab-${key}`}
-                  onClick={() => setActiveTab(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    activeTab === key
-                      ? 'bg-indigo-600 text-white shadow-[0_0_12px_-2px_rgba(99,102,241,0.5)]'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Icon size={13} />
-                  <span className="hidden sm:inline">{label}</span>
-                </button>
-              ))}
+          <div className="flex items-center gap-3">
+            {/* Tab Switcher (When in Notebook View) */}
+            {view === 'notebook' && selectedNotebook && (
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#181c28] border border-white/[0.08]">
+                {[
+                  { key: 'chat', label: 'Hội thoại RAG', icon: MessageSquare },
+                  { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
+                  { key: 'quiz', label: 'Trắc nghiệm AI', icon: HelpCircle },
+                  { key: 'battle', label: 'Đấu trí Live', icon: Swords },
+                  { key: 'groups', label: 'Nhóm học tập', icon: Users },
+                  { key: 'sources', label: 'Quản lý tài liệu', icon: FileText },
+                ].map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    id={`tab-${key}`}
+                    onClick={() => setActiveTab(key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      activeTab === key
+                        ? 'bg-indigo-600 text-white shadow-[0_0_12px_-2px_rgba(99,102,241,0.5)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Icon size={13} />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* User Pill & Logout Button in Top Header */}
+            <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
+              <div className="hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                <User size={13} className="text-indigo-400" />
+                <span className="text-xs font-medium text-slate-200 max-w-[140px] truncate">
+                  {user.full_name || user.email}
+                </span>
+              </div>
+              <button
+                id="header-logout-btn"
+                onClick={() => {
+                  setView('home')
+                  setSelectedNotebook(null)
+                  setNotebooks([])
+                  logout()
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all"
+                title="Đăng xuất"
+              >
+                <LogOut size={13} />
+                <span>Đăng xuất</span>
+              </button>
             </div>
-          )}
+          </div>
         </header>
 
         {/* Content Body */}
