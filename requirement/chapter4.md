@@ -347,8 +347,8 @@ Bản mẫu tương tác được cấu trúc trực tiếp vào mã nguồn Fro
 | **Hộp thoại xác thực** | `frontend/components/AuthModal.jsx` | Chuyển đổi tab Đăng nhập/Đăng ký, kiểm tra regex email, tương tác Google OAuth2 ID token. |
 | **Khung chat tương tác** | `frontend/components/ChatInterface.jsx` | Đọc luồng SSE Streaming, hiển thị con trỏ nhấp nháy, tự động cuộn (Auto-scroll), sao chép câu trả lời (Copy to clipboard). |
 | **Đồ thị tri thức 2D** | `frontend/components/KnowledgeGraph.jsx` | Nạp dữ liệu Graph từ API, ánh xạ màu theo entity type, zoom/pan mượt mà trên Canvas bằng `react-force-graph-2d`. |
-| **Bộ tải lên tài liệu** | `frontend/components/DocumentUpload.jsx` | Kéo thả file PDF/ảnh, hiển thị thanh tiến trình nạp file, form dán URL web tự động trích xuất. |
-| **Danh sách tài liệu** | `frontend/components/DocumentList.jsx` | Danh sách trạng thái nguồn (Pending $\rightarrow$ Processing $\rightarrow$ Completed $\rightarrow$ Failed), nút xem trước và nút xóa. |
+| **Bộ tải lên tài liệu** | `frontend/components/DocumentUpload.jsx` | Kéo thả file PDF/DOCX/TXT/ảnh, hiển thị thanh tiến trình thực tế `0%` → `100%` (`XMLHttpRequest`), form dán URL web tự động trích xuất. |
+| **Danh sách tài liệu** | `frontend/components/DocumentList.jsx` | Danh sách trạng thái nguồn tự động làm mới (Auto-polling 2.5s: Pending $\rightarrow$ Processing $\rightarrow$ Completed $\rightarrow$ Failed), nút xem trước và nút xóa. |
 | **Trình xem tài liệu** | `frontend/components/SourceViewer.jsx` | Modal xem trước nội dung gốc của tài liệu đã trích xuất để đối chiếu kết quả trả lời của AI. |
 
 ---
@@ -357,7 +357,7 @@ Bản mẫu tương tác được cấu trúc trực tiếp vào mã nguồn Fro
 
 1. **Hiệu ứng SSE Typing Indicator:** Khi token từ Gemini 2.5 Flash đổ về, một con trỏ màu tím phát sáng `var(--primary)` nhấp nháy nhịp nhàng ở cuối đoạn văn, tạo cảm giác AI đang chủ động suy nghĩ và gõ chữ tự nhiên.
 2. **Hiệu ứng Card Hover Elevation:** Các thẻ Notebook và thẻ Source khi di chuột vào sẽ hơi nhấc lên với viền sáng mờ nhẹ (`transform: translateY(-2px)`, `border-color: rgba(99, 102, 241, 0.4)`).
-3. **Hiệu ứng Pulse khi đang OCR:** Khi tài liệu ở trạng thái `processing`, biểu tượng spinner xoay tròn kết hợp huy hiệu (badge) màu vàng cam nhấp nháy thông báo tiến độ xử lý đa luồng PP-OCRv6.
+3. **Thanh Tiến Độ Upload (`0%`–`100%`) & Auto-Polling OCR:** Khi tải file lên, thanh tiến độ phần trăm cập nhật mượt theo thời gian thực qua `XMLHttpRequest`, giữ trạng thái hoàn tất 2 giây, sau đó danh sách tự động polling mỗi 2.5 giây khi tài liệu đang ở trạng thái `pending`/`processing` (Gemini Multimodal OCR + PP-OCRv6).
 
 ---
 

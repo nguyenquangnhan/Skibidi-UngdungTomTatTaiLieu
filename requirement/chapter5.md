@@ -516,11 +516,20 @@ def get_embedder() -> GoogleGenerativeAIEmbeddings:
             google_api_key=settings.gemini_api_key,
         )
     return _embedder
+
+async def embed_documents(texts: list[str]) -> list[list[float]]:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(
+        None,
+        lambda: get_embedder().embed_documents(
+            texts, output_dimensionality=settings.embedding_dim  # 768-dim
+        ),
+    )
 ```
 
-### 5.6.2 Repository Pattern — Service Layer Abstraction
+### 5.6.2 Repository Pattern & Background Session Isolation
 
-`notebook_service.py` đóng vai trò **Repository**, tập trung tất cả CRUD với PostgreSQL. Router chỉ gọi service, không bao giờ gọi thẳng SQLAlchemy:
+`notebook_service.py` đóng vai trò **Repository**, tập trung tất cả CRUD với PostgreSQL. Đặc biệt, tác vụ nền `process_source_background(source_id)` tự khởi tạo `AsyncSessionLocal()` độc lập (không dùng chung session của HTTP request) và đi kèm `resume_pending_sources()` khi khởi động server để tự động phục hồi các tài liệu đang `pending`/`processing`:
 
 ```python
 # notebook_service.py
@@ -534,33 +543,25 @@ async def get_notebook(db: AsyncSession, notebook_id: str, user_id: str) -> Note
     return result.scalar_one_or_none()
 
 async def create_file_source(db, notebook_id, title, file_path, source_type) -> Source: ...
-async def process_source_background(db, source: Source) -> None: ...  # Orchestrator
+async def process_source_background(source_id: str) -> None: ...  # Mở AsyncSessionLocal() riêng
+async def resume_pending_sources() -> None: ...                   # Tự phục hồi khi startup
 async def save_message(db, notebook_id, role, content, sources_used=None) -> ChatMessage: ...
 ```
 
-### 5.6.3 Strategy Pattern — Chiến lược Trích xuất Tài liệu
+### 5.6.3 Strategy Pattern — Chiến lược Trích xuất Đa Định Dạng & Dual OCR
 
-`document_processor.py` áp dụng **Strategy Pattern** chọn phương pháp xử lý phù hợp với định dạng đầu vào, kèm fallback tự động:
+`document_processor.py` áp dụng **Strategy Pattern** chọn phương pháp xử lý phù hợp với định dạng đầu vào (`pdf`, `docx`, `txt`, `image`, `url`), ưu tiên **Gemini 2.5 Flash Multimodal OCR** cho trang scan/ảnh và tự động fallback về **PP-OCRv6**:
 
 ```python
 async def process_document(file_path: str, source_type: str) -> str:
     if source_type == "pdf":
-        return await extract_text_from_pdf(file_path)   # Strategy A
+        return await extract_text_from_pdf(file_path)   # Strategy A: Text layer + Dual OCR
+    elif source_type == "docx":
+        return await extract_text_from_docx(file_path)  # Strategy B: python-docx
+    elif source_type == "txt":
+        return await extract_text_from_txt(file_path)   # Strategy C: UTF-8/Latin-1
     elif source_type == "image":
-        return await extract_text_from_image(file_path) # Strategy B
-
-async def extract_text_from_pdf(file_path: str) -> str:
-    # Sub-strategy: text layer (nhanh) hoặc OCR parallel (chậm)
-    for page in doc:
-        text = page.get_text().strip()
-        if text:
-            pages_text.append((i, text))       # Fast path
-        else:
-            needs_ocr_pages.append(i)          # OCR path
-
-    # OCR parallel 3 workers cho trang scan
-    with ProcessPoolExecutor(max_workers=3) as executor:
-        ocr_results = await loop.run_in_executor(None, ...)
+        return await extract_text_from_image(file_path) # Strategy D: Gemini Vision / PP-OCRv6
 ```
 
 ### 5.6.4 Generator / Iterator Pattern — SSE Streaming

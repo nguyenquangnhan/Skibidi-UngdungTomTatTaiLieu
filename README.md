@@ -505,16 +505,38 @@ Trong không gian làm việc của Notebook, chọn khung **Thêm nguồn tài 
 ## 🧪 Testing & Đánh Giá
 
 ```bash
-# Unit tests backend
+# 1. Unit & API tests Backend
 cd backend
-uv run pytest tests/ -v
+pytest -v
 
-# Đánh giá RAGAS
-uv run python evaluate_ragas.py
+# 2. Web E2E tests (Playwright)
+cd frontend
+npx playwright test
 
-# Xuất báo cáo Excel
-uv run python generate_evaluation_excel.py
+# 3. Mobile Flutter static analysis & widget tests
+cd flutter_app
+flutter analyze --no-fatal-infos --no-fatal-warnings
+flutter test test/widget_test.dart test/core test/shared
+
+# 4. Đánh giá RAGAS & Xuất báo cáo Excel
+cd backend
+python evaluate_ragas.py
+python generate_evaluation_excel.py
 ```
+
+---
+
+## 🗂️ Hệ Thống Tài Liệu Kỹ Thuật (`docs/`)
+
+| Tài liệu | Đường dẫn | Nội dung |
+|---|---|---|
+| **Kiến trúc hệ thống (C4)** | [`docs/architecture.md`](docs/architecture.md) | Sơ đồ C4, Sequence diagrams, ERD PostgreSQL, Neo4j Graph & 16 API endpoints |
+| **Đặc tả OpenAPI 3.0.3** | [`docs/openapi.yaml`](docs/openapi.yaml) | Đặc tả REST & SSE API tĩnh đầy đủ request/response schemas |
+| **Tài liệu Yêu cầu (PRD)** | [`docs/PRD.md`](docs/PRD.md) | Jobs-To-Be-Done (JTBD), phạm vi tính năng & yêu cầu phi chức năng |
+| **Quyết định Kiến trúc (ADR)** | [`docs/ADR-001-tech-stack.md`](docs/ADR-001-tech-stack.md) | Lý do lựa chọn FastAPI, PostgreSQL/pgvector, Neo4j, Gemini 2.5 Flash, Next.js & Flutter |
+| **Chuẩn Thiết kế Giao diện** | [`docs/DESIGN-GUIDE.md`](docs/DESIGN-GUIDE.md) | Hệ màu Dark-Mode (`#090a0f`) & quy tắc Anti-Slop UI |
+| **Hướng dẫn Người dùng** | [`docs/user-manual.md`](docs/user-manual.md) | Hướng dẫn thao tác từng bước & xử lý sự cố thường gặp (FAQ) |
+| **Sổ tay Vận hành (Runbook)** | [`docs/runbook.md`](docs/runbook.md) | Quy trình khởi động, kiểm tra sức khỏe dịch vụ, khắc phục sự cố & sao lưu |
 
 ---
 

@@ -564,10 +564,10 @@ OPTIONS {indexConfig: {
 
 ---
 
-### 3.5.2 Feature Spec: PP-OCRv6 Document Processing
+### 3.5.2 Feature Spec: Dual OCR (Gemini 2.5 Flash Multimodal + PP-OCRv6 Fallback) & Multi-Format Processing
 
 #### Tổng quan
-Tính năng xử lý tài liệu đa dạng với OCR tốt nhất hiện tại (PP-OCRv6, 2026), hỗ trợ 50+ ngôn ngữ bao gồm tiếng Việt.
+Tính năng xử lý tài liệu đa định dạng (`PDF`, `DOCX`, `TXT`, `PNG/JPG`, `URL`) kết hợp **Gemini 2.5 Flash Multimodal OCR** (`OCR_PROVIDER=gemini`) làm cơ chế chính và **PP-OCRv6** làm cơ chế dự phòng (fallback), hỗ trợ 50+ ngôn ngữ bao gồm tiếng Việt, bảng biểu và công thức phức tạp.
 
 **Liên kết:** US-07, US-08, US-09 | **Owner:** `document_processor.py`
 
@@ -578,28 +578,25 @@ Tính năng xử lý tài liệu đa dạng với OCR tốt nhất hiện tại 
 
 async def process_document(file_path, file_type):
     if file_type == "pdf":
-        text = extract_pdf_text(file_path)      # PyMuPDF fast path
-        if len(text.strip()) < 100:             # PDF scan detected
-            text = await ocr_pdf(file_path)     # PP-OCRv6 path
-    elif file_type in ["png", "jpg", "webp"]:
-        text = await ocr_image(file_path)       # PP-OCRv6 direct
+        # Trích xuất text layer (PyPDF/PyMuPDF) cho trang thường
+        # Các trang scan (< 50 ký tự) chuyển sang Gemini Multimodal OCR (fallback PP-OCRv6)
+        text = await extract_text_from_pdf(file_path)
+    elif file_type == "docx":
+        text = await extract_text_from_docx(file_path)  # python-docx (paragraphs + tables)
+    elif file_type == "txt":
+        text = await extract_text_from_txt(file_path)   # UTF-8 / Latin-1
+    elif file_type in ["image", "png", "jpg", "webp"]:
+        text = await extract_text_from_image(file_path) # Gemini Vision -> PP-OCRv6 fallback
     elif file_type == "url":
-        text = await scrape_url(file_path)      # httpx + BS4
-
-async def ocr_pdf(pdf_path):
-    # Render pages → 75 DPI PNG
-    # ProcessPoolExecutor(max_workers=3)
-    # PP-OCRv6 medium (34.5M params) per page
-    # Fallback: Gemini Vision nếu confidence thấp
+        text = await extract_text_from_url(file_path)   # httpx + BeautifulSoup4
 ```
 
-#### Thông số PP-OCRv6
+#### Thông số PP-OCRv6 & Gemini Multimodal OCR
 
-| Tier | Parameters | Usecase |
+| Cơ chế | Mô hình / Tier | Vai trò trong Skibidi |
 |---|---|---|
-| `tiny` | 1.5M | Mobile, edge devices |
-| `small` | 7.7M | Balanced |
-| `medium` | 34.5M | **Dùng trong Skibidi** — độ chính xác cao nhất |
+| **Primary OCR** | `gemini-2.5-flash` (Multimodal) | Nhận diện trang PDF scan, bảng biểu, chữ viết tay & đa ngôn ngữ độ chính xác cao |
+| **Fallback OCR** | `PP-OCRv6 medium` (34.5M params) | Xử lý cục bộ CPU (`ProcessPoolExecutor`) khi chạy offline hoặc hết quota API |
 
 **Hiệu năng PP-OCRv6 vs PP-OCRv5:**
 - +4.6% detection accuracy
@@ -610,6 +607,7 @@ async def ocr_pdf(pdf_path):
 #### Cấu hình `.env`
 
 ```env
+OCR_PROVIDER=gemini       # "gemini" (mặc định) hoặc "paddle"
 PADDLE_OCR_LANG=vi        # Ngôn ngữ mặc định: tiếng Việt
 PADDLE_USE_GPU=false      # CPU mode (không cần GPU)
 CHUNK_SIZE=1000           # Ký tự mỗi chunk
