@@ -171,3 +171,4 @@ async def get_or_generate_quiz(
 
     _QUIZ_CACHE[notebook_id] = questions
     return questions
+

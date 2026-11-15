@@ -111,6 +111,26 @@ paths:
                 $ref: "#/components/schemas/UserResponse"
         "401":
           description: Missing or invalid JWT token
+    patch:
+      tags: [Authentication]
+      summary: Update current user profile (full_name, avatar_url)
+      responses:
+        "200":
+          description: Updated user profile
+  /auth/change-password:
+    post:
+      tags: [Authentication]
+      summary: Change current user password
+      responses:
+        "200":
+          description: Password changed successfully
+  /auth/stats:
+    get:
+      tags: [Authentication]
+      summary: Get user activity statistics (notebooks, sources, chunks, chat messages)
+      responses:
+        "200":
+          description: User activity statistics
   /api/notebooks:
     get:
       tags: [Notebooks]

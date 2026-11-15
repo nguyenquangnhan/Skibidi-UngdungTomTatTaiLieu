@@ -1,4 +1,4 @@
-﻿# Chương 5. AI trong Thiết kế & Kiến trúc Phần mềm
+# Chương 5. AI trong Thiết kế & Kiến trúc Phần mềm
 ## Dự án: Skibidi — Nền Tảng Trích Xuất & Hỏi Đáp Tài Liệu Thông Minh
 
 > Chương này trình bày quá trình ứng dụng Trí tuệ Nhân tạo (AI) vào từng tầng kiến trúc của hệ thống Skibidi: từ phân tích kiến trúc tổng thể, lựa chọn mô hình kiến trúc, mô hình hóa bằng UML, thiết kế cơ sở dữ liệu kép (PostgreSQL + Neo4j), đặc tả API RESTful, cho đến áp dụng các Design Pattern phù hợp với đặc thù xử lý AI bất đồng bộ.

@@ -199,3 +199,4 @@ async def delete_group_by_code(code: str):
     clean_code = code.strip().upper()
     LIVE_GROUPS.pop(clean_code, None)
     return {"status": "deleted", "code": clean_code}
+

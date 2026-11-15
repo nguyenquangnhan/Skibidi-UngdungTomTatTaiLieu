@@ -322,3 +322,4 @@ async def leave_room(room_code: str, req: LeaveRoomRequest):
     if room.status == "waiting":
         room.players.pop(req.user_id, None)
     return {"status": "ok"}
+

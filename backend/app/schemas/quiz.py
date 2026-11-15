@@ -21,3 +21,4 @@ class QuizResponse(BaseModel):
     notebook_id: str
     title: str
     questions: list[QuizQuestionItem]
+

@@ -4,6 +4,7 @@ All notable changes to **Skibidi-UngdungTomTatTaiLieu** are documented in this f
 
 ## [Unreleased]
 ### Added
+- **Account Management & Mobile Responsive UI:** Added `PATCH /auth/me`, `POST /auth/change-password`, and `GET /auth/stats` endpoints in `backend/app/routers/auth.py`, `ProfileModal.jsx` account & security modal, Flutter account bottom sheet in `notebooks_screen.dart`, mobile slide-over drawers, and 6-tab mobile bottom navigation bar in `frontend/app/page.jsx`.
 - **Phase 1 — Multi-Format Ingestion & Multi-Layer Summary:** `[Trang N]` page markers in PDF/DOCX/TXT extraction, `.docx`/`.txt`/`.md` upload support, `GET /api/notebooks/{notebook_id}/sources/{source_id}/summary` (`TL;DR` + `key_points` + `summary_detailed`), and upgraded `SourceViewer.jsx`.
 - **Phase 2 — AI Quiz Generator:** `backend/app/schemas/quiz.py`, `backend/app/services/quiz_service.py`, `backend/app/routers/quiz.py` (`POST /api/notebooks/{notebook_id}/quiz` with Neo4j cache & fallback generator), and interactive `QuizPanel.jsx`.
 - **Phase 3 — Live Multiplayer Quiz Battle:** `backend/app/routers/battle.py` (`/api/battle/rooms/*` with 6-digit PIN codes, synchronized server clock, and 500–1000 speed-bonus points) and `BattleArena.jsx`.

@@ -47,3 +47,4 @@ async def generate_notebook_quiz(
         force_regenerate=body.force_regenerate,
     )
     return QuizResponse(notebook_id=notebook_id, title=nb.title, questions=questions)
+

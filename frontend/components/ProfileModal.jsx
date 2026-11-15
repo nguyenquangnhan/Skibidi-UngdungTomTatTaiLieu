@@ -420,3 +420,4 @@ export default function ProfileModal({ onClose, onLogout }) {
     </div>
   )
 }
+

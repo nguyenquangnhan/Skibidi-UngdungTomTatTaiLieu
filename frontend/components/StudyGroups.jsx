@@ -269,3 +269,4 @@ export default function StudyGroups({ notebookId, notebookTitle, sources = [] })
     </div>
   )
 }
+
