@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   BookOpen, Plus, Trash2, LogOut, User, MessageSquare,
   FileText, Network, ChevronLeft, Sparkles, Menu, X,
-  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2
+  Search, ExternalLink, Shield, Cpu, ArrowRight, Layers, CheckCircle2, HelpCircle
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/AuthModal'
@@ -11,6 +11,7 @@ import ChatInterface from '@/components/ChatInterface'
 import DocumentList from '@/components/DocumentList'
 import DocumentUpload from '@/components/DocumentUpload'
 import KnowledgeGraph from '@/components/KnowledgeGraph'
+import QuizPanel from '@/components/QuizPanel'
 import SourceViewer from '@/components/SourceViewer'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
@@ -477,6 +478,7 @@ export default function HomePage() {
               {[
                 { key: 'chat', label: 'Hội thoại RAG', icon: MessageSquare },
                 { key: 'graph', label: 'Đồ thị tri thức', icon: Network },
+                { key: 'quiz', label: 'Trắc nghiệm AI', icon: HelpCircle },
                 { key: 'sources', label: 'Quản lý tài liệu', icon: FileText },
               ].map(({ key, label, icon: Icon }) => (
                 <button
@@ -654,6 +656,14 @@ export default function HomePage() {
 
                 {activeTab === 'graph' && (
                   <KnowledgeGraph notebookId={selectedNotebook.id} />
+                )}
+
+                {activeTab === 'quiz' && (
+                  <QuizPanel
+                    notebookId={selectedNotebook.id}
+                    notebookTitle={selectedNotebook.title}
+                    hasCompletedSources={sources.some(s => s.status === 'completed')}
+                  />
                 )}
 
                 {activeTab === 'sources' && (
